@@ -1,0 +1,24 @@
+# 환경변수 파일 (보안 - 절대 커밋 금지)
+.env
+.env.local
+.env.*.local
+
+# 파이썬 가상환경 및 캐시 (리눅스/WSL2 대응)
+server/venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# 프론트엔드 의존성 및 빌드 결과물
+node_modules/
+client/dist/
+client/build/
+
+# IDE 및 OS 시스템 파일
+.vscode/
+.idea/
+.DS_Store
+
+# 로그 및 업로드 폴더
+logs/
+uploads/
