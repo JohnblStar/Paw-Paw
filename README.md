@@ -87,25 +87,29 @@ uvicorn main:app --reload
 
 ### 환경변수 설정
 
+프론트엔드와 백엔드가 각자 자신의 디렉토리에서 환경변수를 로드하므로, `.env`도 각 디렉토리에 나누어 설정합니다.
+
 ```bash
-cp .env.example .env
-# .env 파일에 값 입력 후 실행
+# Backend
+cp server/.env.example server/.env
+# server/.env 파일에 값 입력 후 실행
+
+# Frontend
+cp client/.env.example client/.env
+# client/.env 파일에 값 입력 후 실행
 ```
 
 ```bash
-# .env.example
-# Server
+# server/.env.example
 PORT=8000
 MONGO_URI=
-
-# OpenAI
 OPENAI_API_KEY=
-
-# JWT
 JWT_SECRET=
+```
 
-# Client
-VITE_API_BASE_URL=
+```bash
+# client/.env.example
+VITE_API_URL=http://localhost:8000
 ```
 
 ---
@@ -116,9 +120,11 @@ VITE_API_BASE_URL=
 paw-paw/
 ├── client/                  # React 프론트엔드
 │   ├── src/
+│   │   ├── api/             # axios 인스턴스, 엔드포인트 상수
 │   │   ├── components/
 │   │   ├── pages/
 │   │   └── assets/
+│   ├── .env.example
 │   └── package.json
 │
 ├── server/                  # FastAPI 백엔드
@@ -128,10 +134,10 @@ paw-paw/
 │   │   ├── models/          # MongoDB 스키마 (Pydantic)
 │   │   ├── services/        # AI 레포팅, 챗봇, 스케줄러
 │   │   └── core/            # DB 연결, 환경변수
+│   ├── .env.example
 │   ├── main.py
 │   └── requirements.txt
 │
-├── .env.example
 ├── .gitignore
 └── README.md
 ```
