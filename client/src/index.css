@@ -1,5 +1,5 @@
-@import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
 
 @theme {
   --color-primary-mint: #9edac4;
@@ -19,5 +19,7 @@
 }
 
 body {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
   font-family: var(--font-sans);
 }
