@@ -23,19 +23,19 @@ function IntroHero() {
   return (
     <div className="flex flex-col justify-center gap-8">
       <div>
-        <h1 className="text-3xl font-bold sm:text-4xl">
+        <h1 className="text-4xl font-bold sm:text-5xl">
           <span className="text-ink">Paw</span>
           <span className="text-primary-purple">:Paw</span>
         </h1>
-        <p className="mt-4 text-xl font-semibold text-ink sm:text-2xl">
+        <p className="mt-5 text-2xl font-semibold text-ink sm:text-3xl">
           우리 아이의 하루를, AI가 함께 돌봐요
         </p>
-        <p className="mt-3 text-sm text-ink-secondary sm:text-base">
+        <p className="mt-4 text-base text-ink-secondary sm:text-lg">
           반려동물의 건강 기록과 AI 상담을 한 곳에서 관리하세요.
         </p>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         {FEATURES.map((feature) => (
           <FeatureCard key={feature.number} {...feature} />
         ))}
