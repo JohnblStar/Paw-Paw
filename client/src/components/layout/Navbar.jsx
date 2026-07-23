@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { mockOwner } from '@/mocks/petMock'
 
 const NAV_ITEMS = [
+  { to: '/main', label: '메인페이지' },
   { to: '/dashboard', label: '대시보드' },
   { to: '/chatbot', label: 'AI챗봇' },
   { to: '/report', label: '건강 레포트' },
