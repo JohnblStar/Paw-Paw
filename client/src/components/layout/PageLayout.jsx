@@ -7,7 +7,7 @@ export default function PageLayout({ children }) {
       <div className="pointer-events-none absolute -bottom-40 -left-24 h-96 w-96 rounded-full bg-primary-purple/15 blur-3xl" />
 
       <Navbar />
-      <main className="relative mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <main className="relative mx-auto max-w-7xl px-6 py-8">{children}</main>
     </div>
   )
 }

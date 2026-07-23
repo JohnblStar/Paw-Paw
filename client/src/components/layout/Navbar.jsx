@@ -22,7 +22,7 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-bg/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <Link to="/main" className="flex items-baseline gap-2">
           <span className="text-xl font-bold text-ink">Paw</span>
           <span className="text-xl font-bold text-primary-purple">:Paw</span>
