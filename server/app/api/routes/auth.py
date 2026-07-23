@@ -1,23 +1,18 @@
 from datetime import datetime, timezone
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-
 from app.core.database import get_database
 from app.core.security import create_access_token
 from app.services.kakao import KakaoAuthError, exchange_code_for_token, fetch_kakao_profile
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
-
 class KakaoCallbackRequest(BaseModel):
     code: str
-
 
 class KakaoCallbackResponse(BaseModel):
     accessToken: str
     isNewUser: bool
-
 
 @router.post("/kakao/callback", response_model=KakaoCallbackResponse)
 async def kakao_callback(body: KakaoCallbackRequest):
