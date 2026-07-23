@@ -1,13 +1,15 @@
 <div align="center">
 
+<img src="./assets/logo.png" alt="logo" width="120" />
+
 # 🐾 Paw:Paw
 
-### 반려동물의 건강 데이터를 기록하고, AI 챗봇과 함께 관리하는 펫 헬스케어 웹 서비스
+### AI가 분석하고, 대시보드가 기억하는 — 나만의 반려동물 케어 플랫폼
 
 [![React](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black)](https://reactjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://mongodb.com/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=flat-square&logo=openai&logoColor=white)](https://openai.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com/)
 [![Railway](https://img.shields.io/badge/Railway-0B0D0E?style=flat-square&logo=railway&logoColor=white)](https://railway.app/)
 
@@ -17,45 +19,56 @@
 
 ## 📌 Overview
 
-반려동물의 체중·복약·예방접종 기록을 한 곳에서 관리하고, AI 챗봇에게 증상을 상담하면
-자동으로 대시보드에 기록이 쌓이는 반려동물 건강관리 웹 서비스입니다.
-
-이 프로젝트는 **포트폴리오/시연 목적**으로 제작되었으며, 실사용 서비스를 목표로 하지 않습니다.
-(AI 챗봇 API가 학교 제공 월간 할당량 안에서 동작하도록 설계되었습니다.)
+반려동물의 건강기록, 예방접종, 식단 정보를 한 눈에 관리하고,  
+AI 기반 맞춤 케어 레포팅과 반려인 커뮤니티를 제공하는 **반려동물 통합 관리 웹 서비스**입니다.
 
 > 팀 **404 Thinking**의 사이드 프로젝트
 
+---
+
 ## ✨ Key Features
 
-- 🏠 **대시보드** — 반려동물 캐릭터와 함께 체중·복약·예방접종 현황을 한눈에
-- 🤖 **AI 챗봇 (자유 상담)** — 증상을 물어보면 완곡한 어조로 답변하고, 특이사항은 자동으로 대시보드에 기록 (병명 확진 없음)
-- 💊 **AI 챗봇 (정보 등록)** — 복약·예방접종 정보를 대화 중 자연스럽게 언급하면 버튼 기반 슬롯필링으로 정확하게 등록
-- 📊 **건강 리포트** — 월간 체중 변화, 증상 빈도, AI 진단 소견을 종합한 리포트
-- 🐶 **마이펫이지** — 여러 반려동물을 한 계정에서 전환하며 관리
-- 🔔 **카카오톡 알림** — 복약 시간 알림, 예방접종 D-Day 리마인드 (1주전·1일전·당일)
+- 🏠 **대시보드** — 반려동물 캐릭터 애니메이션과 함께 건강·식사·접종 정보를 한 눈에
+- 🤖 **AI 레포팅** — 주기적으로 갱신된 데이터를 기반으로 건강·식단·활동 맞춤 리포트 제공
+- 💬 **AI 챗봇** — 내 반려동물 데이터 기반 맞춤형 케어 질의응답
+- 🐶 **커뮤니티** — 반려동물 자랑 피드 및 정보 공유 게시판
+- 🔔 **스마트 알림** — 식사 시간, 예방접종 D-Day 등 시간 기반 말풍선 알림
+
+---
 
 ## 🛠 Tech Stack
 
 | 분류 | 기술 |
 |------|------|
-| Frontend | React.js (Vite), Tailwind CSS v4 |
+| Frontend | React.js, Tailwind CSS, Lottie, Axios |
 | Backend | FastAPI (Python) |
-| Database | MongoDB Atlas (motor 비동기 드라이버) |
-| 인증 | Kakao 소셜 로그인 + JWT 세션 |
-| AI | 학교 제공 HAI-GPT (ChatGPT 계열 API) |
-| 알림 | 카카오톡 알림톡 (Solapi/Coolsms 등 중계 예정) |
+| Database | MongoDB Atlas, motor (비동기 드라이버) |
+| 인증 | JWT |
+| AI | OpenAI API (GPT-4o) |
 | 배포 | Vercel (Frontend), Railway (Backend) |
+
+---
+
+## 🚀 Deployment
+
+| 서비스 | 플랫폼 | URL |
+|--------|--------|-----|
+| Frontend | Vercel | 추후 작성 |
+| Backend | Railway | 추후 작성 |
+| Database | MongoDB Atlas | — |
+
+---
 
 ## 🖥 Getting Started
 
 ### 요구사항
+
 - Node.js 18+
 - Python 3.11+
 - MongoDB Atlas 계정
-- Kakao Developers 앱 (REST API 키, Redirect URI 등록)
-- HAI-GPT API 키 (학교 발급)
 
 ### Frontend
+
 ```bash
 cd client
 npm install
@@ -63,6 +76,7 @@ npm run dev
 ```
 
 ### Backend
+
 ```bash
 cd server
 python -m venv venv
@@ -71,54 +85,70 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-### 환경변수
+### 환경변수 설정
+
 ```bash
-# server/.env
+cp .env.example .env
+# .env 파일에 값 입력 후 실행
+```
+
+```bash
+# .env.example
+# Server
 PORT=8000
 MONGO_URI=
-HAI_GPT_API_KEY=
-KAKAO_REST_API_KEY=
+
+# OpenAI
+OPENAI_API_KEY=
+
+# JWT
 JWT_SECRET=
 
-# client/.env
-VITE_API_URL=http://localhost:8000
-VITE_KAKAO_JS_KEY=
+# Client
+VITE_API_BASE_URL=
 ```
+
+---
 
 ## 📁 Project Structure
 
 ```
 paw-paw/
-├── CLAUDE.md                # 프로젝트 공통 개발 규칙
 ├── client/                  # React 프론트엔드
 │   ├── src/
-│   │   ├── api/
 │   │   ├── components/
 │   │   ├── pages/
 │   │   └── assets/
-│   └── CLAUDE.md
+│   └── package.json
+│
 ├── server/                  # FastAPI 백엔드
 │   ├── app/
-│   │   ├── api/routes/      # pet, auth, dashboard, chat, report
-│   │   ├── models/
-│   │   ├── services/        # AI 챗봇 로직, 알림 스케줄러
-│   │   └── core/
-│   └── CLAUDE.md
-└── docs/
-    ├── SPEC.md               # 통합 기획 스펙
-    ├── DESIGN.md             # 디자인 토큰 / UI 방향
-    └── features/             # 기능별 상세 스펙
+│   │   ├── api/
+│   │   │   └── routes/      # pet, user, community, report, chat
+│   │   ├── models/          # MongoDB 스키마 (Pydantic)
+│   │   ├── services/        # AI 레포팅, 챗봇, 스케줄러
+│   │   └── core/            # DB 연결, 환경변수
+│   ├── main.py
+│   └── requirements.txt
+│
+├── .env.example
+├── .gitignore
+└── README.md
 ```
+
+---
 
 ## 👥 Team 404 Thinking
 
 | 이름 | 역할 |
 |------|------|
-| 정재훈 | 팀장 / 기획 / 디자인 |
-| 이지원 | 기획 / 디자인 |
-| 조한별 | 프론트엔드 |
-| 김학래 | 백엔드 |
+| [정재훈] | 팀장 / 기획 / 디자인 |
+| [이지원] | 기획 / 디자인 |
+| [조한별] | 프론트엔드 |
+| [김학래] | 백엔드 |
+
+---
 
 ## 📄 License
 
-MIT License © 2026 404 Thinking
+MIT License © 2025 404 Thinking
