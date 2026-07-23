@@ -1,30 +1,33 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { Route, Routes } from 'react-router-dom'
+import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout'
+import GuestOnly from './components/GuestOnly'
+import IntroPage from './pages/IntroPage'
+import KakaoCallbackPage from './pages/KakaoCallbackPage'
+import MainPage from './pages/MainPage'
+import Dashboard from './pages/Dashboard'
+import ComingSoon from './pages/ComingSoon'
 
 function App() {
-  const [connectionStatus, setConnectionStatus] = useState('Connecting...')
-
-  useEffect(() => {
-    axios.get('http://localhost:8000/health')
-      .then((res) => {
-        if (res.data.database === 'connected') {
-          setConnectionStatus('Frontend ↔ Backend ─ MongoDB Atlas 연결 성공! 🎉')
-        } else {
-          setConnectionStatus('백엔드 서버는 응답하나 데이터베이스 연결이 불안정합니다. ⚠️')
-        }
-      })
-      .catch(() => {
-        setConnectionStatus('백엔드 API 서버(Port 8000)가 꺼져 있습니다. ❌')
-      })
-  }, [])
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <div className="rounded-2xl bg-white p-8 shadow-xl text-center max-w-md">
-        <h1 className="text-2xl font-bold text-slate-800 mb-4">Paw:Paw Infrastructure Test</h1>
-        <p className="text-lg font-medium text-indigo-600">{connectionStatus}</p>
-      </div>
-    </div>
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <GuestOnly>
+            <IntroPage />
+          </GuestOnly>
+        }
+      />
+      <Route path="/login/kakao/callback" element={<KakaoCallbackPage />} />
+
+      <Route element={<AuthenticatedLayout />}>
+        <Route path="/main" element={<MainPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/chatbot" element={<ComingSoon label="AI챗봇" />} />
+        <Route path="/report" element={<ComingSoon label="건강 레포트" />} />
+        <Route path="/mypetsy" element={<ComingSoon label="마이펫이지" />} />
+      </Route>
+    </Routes>
   )
 }
 
