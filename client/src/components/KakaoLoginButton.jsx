@@ -9,7 +9,7 @@ function KakaoLoginButton() {
 
   const handleLogin = () => {
     window.Kakao?.Auth.authorize({
-      redirectUri: `${window.location.origin}/auth/kakao/callback`,
+      redirectUri: `${window.location.origin}/login/kakao/callback`,
     })
   }
 

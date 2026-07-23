@@ -33,8 +33,8 @@ export default function MainPage() {
 
   return (
     <PageLayout>
-      <div className="flex min-h-[calc(100vh-8rem)] flex-col justify-between gap-6">
-        <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[300px_1fr_300px]">
+      <div className="flex flex-col gap-8">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[300px_1fr_300px]">
           <LeftWidget pet={activePet} upcomingDday={mockUpcomingDday} week={mockWeeklyMedCalendar} />
           <MascotPlaceholder />
           <div className="flex justify-center lg:justify-start lg:pt-8">
@@ -42,7 +42,7 @@ export default function MainPage() {
           </div>
         </div>
 
-        <div className="flex justify-center pb-4">
+        <div className="flex justify-center">
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
