@@ -31,26 +31,35 @@ export default function MainPage() {
     todayHealthNote: mockTodayHealthNote,
   })
 
+  const today = new Date().toLocaleDateString('ko-KR', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  })
+
   return (
     <PageLayout>
-      <div className="flex flex-col gap-8">
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[300px_1fr_300px]">
+      <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center gap-10">
+        <div className="text-center">
+          <p className="text-sm text-ink-secondary">{today}</p>
+          <p className="mt-1 text-2xl font-bold text-ink">{activePet.name}와 함께하는 하루</p>
+        </div>
+
+        <div className="grid w-full grid-cols-1 items-center gap-6 lg:grid-cols-[300px_1fr_300px]">
           <LeftWidget pet={activePet} upcomingDday={mockUpcomingDday} week={mockWeeklyMedCalendar} />
           <MascotPlaceholder />
-          <div className="flex justify-center lg:justify-start lg:pt-8">
+          <div className="flex justify-center lg:justify-start">
             <SpeechBubble message={bubbleMessage} />
           </div>
         </div>
 
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className="rounded-full border border-primary-mint-dark px-6 py-2 text-sm font-semibold text-primary-mint-dark transition-colors hover:bg-primary-mint hover:text-ink"
-          >
-            자세히 보기
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          className="rounded-full border border-primary-mint-dark px-6 py-2 text-sm font-semibold text-primary-mint-dark transition-colors hover:bg-primary-mint hover:text-ink"
+        >
+          자세히 보기
+        </button>
       </div>
     </PageLayout>
   )
