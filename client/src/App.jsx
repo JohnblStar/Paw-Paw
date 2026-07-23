@@ -18,7 +18,7 @@ function App() {
           </GuestOnly>
         }
       />
-      <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
+      <Route path="/login/kakao/callback" element={<KakaoCallbackPage />} />
 
       <Route element={<AuthenticatedLayout />}>
         <Route path="/main" element={<MainPage />} />

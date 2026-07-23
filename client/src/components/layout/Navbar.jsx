@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { usePet } from '@/context/usePet'
 import { useAuth } from '@/hooks/useAuth'
 import { mockOwner } from '@/mocks/petMock'
@@ -23,10 +23,10 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-bg/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        <div className="flex items-baseline gap-2">
+        <Link to="/main" className="flex items-baseline gap-2">
           <span className="text-xl font-bold text-ink">Paw</span>
           <span className="text-xl font-bold text-primary-purple">:Paw</span>
-        </div>
+        </Link>
 
         <nav className="flex items-center gap-6">
           {NAV_ITEMS.map((item) => (
