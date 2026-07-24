@@ -31,3 +31,22 @@ async def get_monthly_weights(petId: str, month: str = Query(..., pattern=r"^\d{
             last_value = entries[day]
         result.append(DailyWeight(date=day, value=last_value))
     return result
+
+class MedicationToday(BaseModel):
+    id: str
+    title: str
+    checked: bool
+
+@router.get("/{petId}/medications/today", response_model=list[MedicationToday])
+async def get_today_medications(petId: str):
+    db = get_database()
+    today = date.today()
+    cursor = db.medications.find({"petId": ObjectId(petId)})
+    return [
+        MedicationToday(
+            id=str(doc["_id"]),
+            title=doc["title"],
+            checked=today in doc.get("completedDates", []),
+        )
+        async for doc in cursor
+    ]
