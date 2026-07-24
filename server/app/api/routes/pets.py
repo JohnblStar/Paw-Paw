@@ -77,3 +77,25 @@ async def get_medications_calendar(petId: str, month: str = Query(..., pattern=r
         DayMedicationSummary(date=date(year, mon, day), completed=completed_counts[day], total=total)
         for day in range(1, last_day + 1)
     ]
+
+@router.patch("/{petId}/medications/{medicationId}/check", response_model=MedicationToday)
+async def toggle_medication_check(petId: str, medicationId: str):
+    db = get_database()
+    today = date.today()
+    medications = db.medications
+
+    pulled = await medications.update_one(
+        {"_id": ObjectId(medicationId), "petId": ObjectId(petId)},
+        {"$pull": {"completedDates": today}},
+    )
+    if pulled.modified_count:
+        checked = False
+    else:
+        await medications.update_one(
+            {"_id": ObjectId(medicationId), "petId": ObjectId(petId)},
+            {"$addToSet": {"completedDates": today}},
+        )
+        checked = True
+
+    doc = await medications.find_one({"_id": ObjectId(medicationId)})
+    return MedicationToday(id=str(doc["_id"]), title=doc["title"], checked=checked)
