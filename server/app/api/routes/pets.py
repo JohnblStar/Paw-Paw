@@ -4,6 +4,8 @@ from bson import ObjectId
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from app.core.database import get_database
+from collections import defaultdict
+
 
 router = APIRouter(prefix="/api/v1/pets", tags=["pets"])
 
@@ -49,4 +51,29 @@ async def get_today_medications(petId: str):
             checked=today in doc.get("completedDates", []),
         )
         async for doc in cursor
+    ]
+
+class DayMedicationSummary(BaseModel):
+    date: date
+    completed: int
+    total: int
+
+@router.get("/{petId}/medications/calendar", response_model=list[DayMedicationSummary])
+async def get_medications_calendar(petId: str, month: str = Query(..., pattern=r"^\d{4}-\d{2}$")):
+    year, mon = (int(part) for part in month.split("-"))
+    _, last_day = monthrange(year, mon)
+
+    db = get_database()
+    medications = [doc async for doc in db.medications.find({"petId": ObjectId(petId)})]
+    total = len(medications)
+
+    completed_counts = defaultdict(int)
+    for med in medications:
+        for completed_date in med.get("completedDates", []):
+            if completed_date.year == year and completed_date.month == mon:
+                completed_counts[completed_date.day] += 1
+
+    return [
+        DayMedicationSummary(date=date(year, mon, day), completed=completed_counts[day], total=total)
+        for day in range(1, last_day + 1)
     ]
