@@ -11,6 +11,7 @@ async def connect_to_mongo() -> None:
     await db.pets.create_index("ownerId")
     await db.weights.create_index([("petId", 1), ("date", 1)])
     await db.medications.create_index("petId")
+    await db.schedules.create_index([("petId", 1), ("date", 1)])
 
 async def close_mongo_connection() -> None:
     if client is not None:

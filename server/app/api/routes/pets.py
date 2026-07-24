@@ -99,3 +99,19 @@ async def toggle_medication_check(petId: str, medicationId: str):
 
     doc = await medications.find_one({"_id": ObjectId(medicationId)})
     return MedicationToday(id=str(doc["_id"]), title=doc["title"], checked=checked)
+
+class ScheduleDDay(BaseModel):
+    title: str
+    date: date
+    dDay: int
+
+async def get_upcoming_schedule_dday(petId: str) -> ScheduleDDay | None:
+    db = get_database()
+    today = date.today()
+    doc = await db.schedules.find_one(
+        {"petId": ObjectId(petId), "date": {"$gte": today}},
+        sort=[("date", 1)],
+    )
+    if doc is None:
+        return None
+    return ScheduleDDay(title=doc["title"], date=doc["date"], dDay=(doc["date"] - today).days)
