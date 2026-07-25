@@ -1,18 +1,22 @@
+import asyncio
 from calendar import monthrange
-from datetime import date, timedelta
+from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
 from bson import ObjectId
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from app.core.database import get_database
-from collections import defaultdict
-import asyncio
 from app.models.pet import PetOut
 
 router = APIRouter(prefix="/api/v1/pets", tags=["pets"])
 
+def _to_datetime(d: date) -> datetime:
+    return datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+
 class DailyWeight(BaseModel):
     date: date
     value: float | None
+
 
 @router.get("/{petId}/weights/monthly", response_model=list[DailyWeight])
 async def get_monthly_weights(petId: str, month: str = Query(..., pattern=r"^\d{4}-\d{2}$")):
@@ -22,9 +26,9 @@ async def get_monthly_weights(petId: str, month: str = Query(..., pattern=r"^\d{
 
     db = get_database()
     cursor = db.weights.find(
-        {"petId": ObjectId(petId), "date": {"$lte": date(year, mon, last_day)}}
+        {"petId": ObjectId(petId), "date": {"$lte": _to_datetime(date(year, mon, last_day))}}
     ).sort("date", 1)
-    entries = {doc["date"]: doc["value"] async for doc in cursor}
+    entries = {doc["date"].date(): doc["value"] async for doc in cursor}
 
     last_value = None
     result = []
@@ -49,7 +53,7 @@ async def get_today_medications(petId: str):
         MedicationToday(
             id=str(doc["_id"]),
             title=doc["title"],
-            checked=today in doc.get("completedDates", []),
+            checked=today in {d.date() for d in doc.get("completedDates", [])},
         )
         async for doc in cursor
     ]
@@ -82,19 +86,19 @@ async def get_medications_calendar(petId: str, month: str = Query(..., pattern=r
 @router.patch("/{petId}/medications/{medicationId}/check", response_model=MedicationToday)
 async def toggle_medication_check(petId: str, medicationId: str):
     db = get_database()
-    today = date.today()
+    today_dt = _to_datetime(date.today())
     medications = db.medications
 
     pulled = await medications.update_one(
         {"_id": ObjectId(medicationId), "petId": ObjectId(petId)},
-        {"$pull": {"completedDates": today}},
+        {"$pull": {"completedDates": today_dt}},
     )
     if pulled.modified_count:
         checked = False
     else:
         await medications.update_one(
             {"_id": ObjectId(medicationId), "petId": ObjectId(petId)},
-            {"$addToSet": {"completedDates": today}},
+            {"$addToSet": {"completedDates": today_dt}},
         )
         checked = True
 
@@ -110,12 +114,13 @@ async def get_upcoming_schedule_dday(petId: str) -> ScheduleDDay | None:
     db = get_database()
     today = date.today()
     doc = await db.schedules.find_one(
-        {"petId": ObjectId(petId), "date": {"$gte": today}},
+        {"petId": ObjectId(petId), "date": {"$gte": _to_datetime(today)}},
         sort=[("date", 1)],
     )
     if doc is None:
         return None
-    return ScheduleDDay(title=doc["title"], date=doc["date"], dDay=(doc["date"] - today).days)
+    schedule_date = doc["date"].date()
+    return ScheduleDDay(title=doc["title"], date=schedule_date, dDay=(schedule_date - today).days)
 
 class DashboardOut(BaseModel):
     pet: PetOut

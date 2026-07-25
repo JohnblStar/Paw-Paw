@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  # 1. 미들웨어 임포트
-from app.api.routes import auth
+from app.api.routes import auth, pets 
 from app.core.database import close_mongo_connection, connect_to_mongo, get_database
 
 
@@ -28,7 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(auth.router)
-
+app.include_router(pets.router)
 
 @app.get("/health")
 async def health_check():
