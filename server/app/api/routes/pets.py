@@ -1,11 +1,12 @@
 from calendar import monthrange
 from datetime import date, timedelta
 from bson import ObjectId
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 from app.core.database import get_database
 from collections import defaultdict
-
+import asyncio
+from app.models.pet import PetOut
 
 router = APIRouter(prefix="/api/v1/pets", tags=["pets"])
 
@@ -115,3 +116,30 @@ async def get_upcoming_schedule_dday(petId: str) -> ScheduleDDay | None:
     if doc is None:
         return None
     return ScheduleDDay(title=doc["title"], date=doc["date"], dDay=(doc["date"] - today).days)
+
+class DashboardOut(BaseModel):
+    pet: PetOut
+    weights: list[DailyWeight]
+    medicationsToday: list[MedicationToday]
+    upcomingSchedule: ScheduleDDay | None
+
+@router.get("/{petId}/dashboard", response_model=DashboardOut)
+async def get_dashboard(petId: str):
+    db = get_database()
+    pet_doc = await db.pets.find_one({"_id": ObjectId(petId)})
+    if pet_doc is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+    current_month = date.today().strftime("%Y-%m")
+    weights, medications_today, upcoming_schedule = await asyncio.gather(
+        get_monthly_weights(petId, current_month),
+        get_today_medications(petId),
+        get_upcoming_schedule_dday(petId),
+    )
+
+    return DashboardOut(
+        pet=PetOut.from_mongo(pet_doc),
+        weights=weights,
+        medicationsToday=medications_today,
+        upcomingSchedule=upcoming_schedule,
+    )
