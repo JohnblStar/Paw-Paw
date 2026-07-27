@@ -18,6 +18,7 @@ class PetOut(BaseModel):
     neutered: bool
     weight: float
     photoKey: str
+    isActive: bool = False        # ← 이 줄 추가
     managedConditions: list[str] = []
     healthNotes: list[HealthNote] = []
 

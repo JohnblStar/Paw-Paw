@@ -1,9 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  # 1. 미들웨어 임포트
-from app.api.routes import auth, pets 
+from app.api.routes import auth, pets, users
 from app.core.database import close_mongo_connection, connect_to_mongo, get_database
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -11,7 +10,6 @@ async def lifespan(app: FastAPI):
     print("MongoDB Atlas Connection Successful!")
     yield
     await close_mongo_connection()
-
 
 app = FastAPI(lifespan=lifespan)
 
@@ -29,6 +27,7 @@ app.add_middleware(
 )
 app.include_router(auth.router)
 app.include_router(pets.router)
+app.include_router(users.router)
 
 @app.get("/health")
 async def health_check():
