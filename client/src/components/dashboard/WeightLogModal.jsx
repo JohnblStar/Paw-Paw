@@ -1,25 +1,21 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Modal from '@/components/common/Modal'
-import FormField from '@/components/common/FormField'
-import { usePet } from '@/context/usePet'
-
-const inputClass =
-  'w-full rounded-xl border border-border bg-bg px-3 py-2 text-sm text-ink focus:border-primary-mint-dark focus:outline-none'
-
-function today() {
-  return new Date().toISOString().slice(0, 10)
-}
+import FormField, { ErrorText } from '@/components/common/FormField'
+import { useWeight } from '@/context/useWeight'
+import { INPUT_CLASS } from '@/constants/formStyles'
+import { todayISO } from '@/utils/date'
+import { isValidWeight } from '@/utils/validation'
 
 export default function WeightLogModal({ isOpen, onClose, petId, entries }) {
-  const { addWeightEntry, updateWeightEntry, deleteWeightEntry } = usePet()
+  const { addWeightEntry, updateWeightEntry, deleteWeightEntry } = useWeight()
   const [editingId, setEditingId] = useState(null)
-  const [date, setDate] = useState(today())
+  const [date, setDate] = useState(todayISO())
   const [weight, setWeight] = useState('')
   const [error, setError] = useState('')
 
   const resetForm = () => {
     setEditingId(null)
-    setDate(today())
+    setDate(todayISO())
     setWeight('')
     setError('')
   }
@@ -35,7 +31,7 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries }) {
       setError('날짜를 선택해주세요.')
       return
     }
-    if (weight === '' || Number.isNaN(Number(weight)) || Number(weight) <= 0) {
+    if (!isValidWeight(weight)) {
       setError('체중을 올바르게 입력해주세요.')
       return
     }
@@ -55,7 +51,10 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries }) {
     setError('')
   }
 
-  const sortedEntries = [...entries].sort((a, b) => (a.date < b.date ? 1 : -1))
+  const sortedEntries = useMemo(
+    () => [...entries].sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [entries],
+  )
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="체중 기록">
@@ -66,9 +65,9 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries }) {
               id="weight-log-date"
               type="date"
               value={date}
-              max={today()}
+              max={todayISO()}
               onChange={(event) => setDate(event.target.value)}
-              className={inputClass}
+              className={INPUT_CLASS}
             />
           </FormField>
         </div>
@@ -80,7 +79,7 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries }) {
               step="0.01"
               value={weight}
               onChange={(event) => setWeight(event.target.value)}
-              className={inputClass}
+              className={INPUT_CLASS}
               placeholder="예: 3.2"
             />
           </FormField>
@@ -92,7 +91,7 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries }) {
           {editingId ? '수정' : '기록'}
         </button>
       </form>
-      {error && <p className="mt-1 text-xs text-coral">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
       {editingId && (
         <button
           type="button"

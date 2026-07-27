@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import PageLayout from '@/components/layout/PageLayout'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
 import BasicInfoCard from '@/components/dashboard/BasicInfoCard'
@@ -7,7 +8,9 @@ import WeightGraphCard from '@/components/dashboard/WeightGraphCard'
 import MonthlyMedCalendarCard from '@/components/dashboard/MonthlyMedCalendarCard'
 import HealthNotesCard from '@/components/dashboard/HealthNotesCard'
 import { usePet } from '@/context/usePet'
+import { useWeight } from '@/context/useWeight'
 import { buildMonthlyWeightSeries } from '@/utils/weightSeries'
+import { todayISO } from '@/utils/date'
 import {
   mockHealthNotes,
   mockMedicationCalendarDetail,
@@ -17,7 +20,18 @@ import {
 } from '@/mocks/petMock'
 
 export default function Dashboard() {
-  const { activePet, weightEntriesByPetId } = usePet()
+  const { activePet } = usePet()
+  const { weightEntriesByPetId } = useWeight()
+
+  const weightEntries = useMemo(
+    () => weightEntriesByPetId[activePet?.id] ?? [],
+    [weightEntriesByPetId, activePet?.id],
+  )
+  const currentMonth = todayISO().slice(0, 7)
+  const monthlyWeight = useMemo(
+    () => buildMonthlyWeightSeries(weightEntries, currentMonth),
+    [weightEntries, currentMonth],
+  )
 
   if (!activePet) {
     return (
@@ -26,10 +40,6 @@ export default function Dashboard() {
       </PageLayout>
     )
   }
-
-  const weightEntries = weightEntriesByPetId[activePet.id] ?? []
-  const currentMonth = new Date().toISOString().slice(0, 7)
-  const monthlyWeight = buildMonthlyWeightSeries(weightEntries, currentMonth)
 
   return (
     <PageLayout>

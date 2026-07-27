@@ -3,6 +3,9 @@ import FormField from '@/components/common/FormField'
 import ToggleButtonGroup from '@/components/mypetsy/ToggleButtonGroup'
 import PetAvatarPicker from '@/components/mypetsy/PetAvatarPicker'
 import { getAvatarPresetsForSpecies } from '@/constants/petAvatarPresets'
+import { INPUT_CLASS } from '@/constants/formStyles'
+import { todayISO } from '@/utils/date'
+import { isValidWeight } from '@/utils/validation'
 
 const SPECIES_OPTIONS = [
   { value: 'dog', label: '강아지' },
@@ -17,18 +20,15 @@ const NEUTERED_OPTIONS = [
   { value: false, label: '미완료' },
 ]
 
-const inputClass =
-  'w-full rounded-xl border border-border bg-bg px-4 py-2.5 text-sm text-ink focus:border-primary-mint-dark focus:outline-none'
-
 function validate(values) {
   const errors = {}
   if (!values.name.trim()) errors.name = '이름을 입력해주세요.'
   if (!values.birthDate) {
     errors.birthDate = '생일을 선택해주세요.'
-  } else if (values.birthDate > new Date().toISOString().slice(0, 10)) {
+  } else if (values.birthDate > todayISO()) {
     errors.birthDate = '오늘 이후 날짜는 선택할 수 없어요.'
   }
-  if (values.weight === '' || Number.isNaN(Number(values.weight)) || Number(values.weight) <= 0) {
+  if (!isValidWeight(values.weight)) {
     errors.weight = '체중을 올바르게 입력해주세요.'
   }
   return errors
@@ -68,7 +68,7 @@ export default function PetForm({ initialValues, submitLabel, onSubmit }) {
           type="text"
           value={values.name}
           onChange={(event) => updateField('name', event.target.value)}
-          className={inputClass}
+          className={INPUT_CLASS}
           placeholder="예: 뽀삐"
         />
       </FormField>
@@ -83,7 +83,7 @@ export default function PetForm({ initialValues, submitLabel, onSubmit }) {
           type="text"
           value={values.breed}
           onChange={(event) => updateField('breed', event.target.value)}
-          className={inputClass}
+          className={INPUT_CLASS}
           placeholder="예: 포메라니안"
         />
       </FormField>
@@ -93,9 +93,9 @@ export default function PetForm({ initialValues, submitLabel, onSubmit }) {
           id="pet-birthDate"
           type="date"
           value={values.birthDate}
-          max={new Date().toISOString().slice(0, 10)}
+          max={todayISO()}
           onChange={(event) => updateField('birthDate', event.target.value)}
-          className={inputClass}
+          className={INPUT_CLASS}
         />
       </FormField>
 
@@ -122,7 +122,7 @@ export default function PetForm({ initialValues, submitLabel, onSubmit }) {
           step="0.01"
           value={values.weight}
           onChange={(event) => updateField('weight', event.target.value)}
-          className={inputClass}
+          className={INPUT_CLASS}
           placeholder="예: 3.2"
         />
       </FormField>

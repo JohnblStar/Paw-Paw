@@ -14,3 +14,8 @@ export function getAvatarPresetsForSpecies(species) {
 export function resolvePetAvatar(pet) {
   return PET_AVATAR_PRESETS.find((preset) => preset.key === pet.photoKey) ?? null
 }
+
+// 프리셋이 없는(구버전) pet도 항상 렌더링 가능한 값을 돌려준다 (이모지 또는 이름 이니셜).
+export function getPetAvatarDisplay(pet) {
+  return resolvePetAvatar(pet)?.emoji ?? pet.name.slice(0, 1)
+}
