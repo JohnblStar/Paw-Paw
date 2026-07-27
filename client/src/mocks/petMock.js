@@ -54,33 +54,22 @@ export const flavorMessages = [
   '낮잠 잘래요 zzz',
 ]
 
-// 이번달 체중 기록. 미입력일은 이미 직전 값으로 carry-forward된 상태로 내려온다고 가정
-// (그래프는 이 값을 그대로 그리면 자연히 끊김 없는 선이 된다).
-export const mockMonthlyWeight = [
-  { date: '2026-07-01', weight: 3.05 },
-  { date: '2026-07-02', weight: 3.05 },
-  { date: '2026-07-03', weight: 3.08 },
-  { date: '2026-07-04', weight: 3.08 },
-  { date: '2026-07-05', weight: 3.08 },
-  { date: '2026-07-06', weight: 3.1 },
-  { date: '2026-07-07', weight: 3.1 },
-  { date: '2026-07-08', weight: 3.12 },
-  { date: '2026-07-09', weight: 3.12 },
-  { date: '2026-07-10', weight: 3.12 },
-  { date: '2026-07-11', weight: 3.12 },
-  { date: '2026-07-12', weight: 3.15 },
-  { date: '2026-07-13', weight: 3.15 },
-  { date: '2026-07-14', weight: 3.15 },
-  { date: '2026-07-15', weight: 3.18 },
-  { date: '2026-07-16', weight: 3.18 },
-  { date: '2026-07-17', weight: 3.2 },
-  { date: '2026-07-18', weight: 3.2 },
-  { date: '2026-07-19', weight: 3.2 },
-  { date: '2026-07-20', weight: 3.19 },
-  { date: '2026-07-21', weight: 3.19 },
-  { date: '2026-07-22', weight: 3.21 },
-  { date: '2026-07-23', weight: 3.21 },
-]
+// 반려동물별 체중 기록 원본(사용자가 실제 입력한 날짜만 존재하는 sparse 데이터).
+// 대시보드에 표시되는 채워진 시계열은 utils/weightSeries.js가 이 원본으로부터 매번 계산한다
+// (미입력일 carry-forward 규칙은 표시 시점 계산으로 처리하고, 저장은 sparse하게 유지).
+export const mockWeightEntries = {
+  'pet-1': [
+    { id: 'weight-1', date: '2026-07-01', weight: 3.05 },
+    { id: 'weight-2', date: '2026-07-03', weight: 3.08 },
+    { id: 'weight-3', date: '2026-07-06', weight: 3.1 },
+    { id: 'weight-4', date: '2026-07-08', weight: 3.12 },
+    { id: 'weight-5', date: '2026-07-12', weight: 3.15 },
+    { id: 'weight-6', date: '2026-07-15', weight: 3.18 },
+    { id: 'weight-7', date: '2026-07-17', weight: 3.2 },
+    { id: 'weight-8', date: '2026-07-20', weight: 3.19 },
+    { id: 'weight-9', date: '2026-07-22', weight: 3.21 },
+  ],
+}
 
 // mockWeeklyMedCalendar와 동일한 shape을 월 전체로 확장 (오늘까지만 존재)
 export const mockMonthlyMedCalendar = [

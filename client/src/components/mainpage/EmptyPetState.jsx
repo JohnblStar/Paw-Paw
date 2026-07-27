@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 
-export default function EmptyPetState() {
+export default function EmptyPetState({ to = '/mypetsy' }) {
   const navigate = useNavigate()
 
   return (
@@ -13,7 +13,7 @@ export default function EmptyPetState() {
       </p>
       <button
         type="button"
-        onClick={() => navigate('/mypetsy')}
+        onClick={() => navigate(to)}
         className="mt-2 rounded-full bg-primary-mint px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-primary-mint-dark hover:text-white"
       >
         반려동물 등록하기

@@ -7,17 +7,17 @@ import WeightGraphCard from '@/components/dashboard/WeightGraphCard'
 import MonthlyMedCalendarCard from '@/components/dashboard/MonthlyMedCalendarCard'
 import HealthNotesCard from '@/components/dashboard/HealthNotesCard'
 import { usePet } from '@/context/usePet'
+import { buildMonthlyWeightSeries } from '@/utils/weightSeries'
 import {
   mockHealthNotes,
   mockMedicationCalendarDetail,
   mockMedicationsToday,
   mockMonthlyMedCalendar,
-  mockMonthlyWeight,
   mockVaccinations,
 } from '@/mocks/petMock'
 
 export default function Dashboard() {
-  const { activePet } = usePet()
+  const { activePet, weightEntriesByPetId } = usePet()
 
   if (!activePet) {
     return (
@@ -26,6 +26,10 @@ export default function Dashboard() {
       </PageLayout>
     )
   }
+
+  const weightEntries = weightEntriesByPetId[activePet.id] ?? []
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const monthlyWeight = buildMonthlyWeightSeries(weightEntries, currentMonth)
 
   return (
     <PageLayout>
@@ -38,7 +42,7 @@ export default function Dashboard() {
             <VaccinationListCard vaccinations={mockVaccinations} />
           </div>
 
-          <WeightGraphCard data={mockMonthlyWeight} />
+          <WeightGraphCard petId={activePet.id} data={monthlyWeight} entries={weightEntries} />
         </div>
 
         <div className="flex flex-col gap-6">
