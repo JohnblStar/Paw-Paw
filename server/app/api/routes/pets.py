@@ -129,6 +129,7 @@ class DashboardOut(BaseModel):
     weights: list[DailyWeight]
     medicationsToday: list[MedicationToday]
     upcomingSchedule: ScheduleDDay | None
+    schedules: list[ScheduleItem]
 
 @router.get("/{petId}/dashboard", response_model=DashboardOut)
 async def get_dashboard(petId: str):
@@ -138,10 +139,11 @@ async def get_dashboard(petId: str):
         raise HTTPException(status_code=404, detail="Pet not found")
 
     current_month = date.today().strftime("%Y-%m")
-    weights, medications_today, upcoming_schedule = await asyncio.gather(
+    weights, medications_today, upcoming_schedule, schedules = await asyncio.gather(
         get_monthly_weights(petId, current_month),
         get_today_medications(petId),
         get_upcoming_schedule_dday(petId),
+        get_all_schedules(petId),
     )
 
     return DashboardOut(
@@ -149,6 +151,7 @@ async def get_dashboard(petId: str):
         weights=weights,
         medicationsToday=medications_today,
         upcomingSchedule=upcoming_schedule,
+        schedules=schedules,
     )
 
 class PetCreate(BaseModel):
@@ -255,3 +258,16 @@ async def delete_weight_entry(petId: str, weightId: str, user_id: str = Depends(
     result = await db.weights.delete_one({"_id": ObjectId(weightId), "petId": ObjectId(petId)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Weight entry not found")
+
+class ScheduleItem(BaseModel):
+    id: str
+    title: str
+    date: date
+
+async def get_all_schedules(petId: str) -> list[ScheduleItem]:
+    db = get_database()
+    cursor = db.schedules.find({"petId": ObjectId(petId)}).sort("date", 1)
+    return [
+        ScheduleItem(id=str(doc["_id"]), title=doc["title"], date=doc["date"].date())
+        async for doc in cursor
+    ]
