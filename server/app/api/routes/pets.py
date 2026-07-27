@@ -17,7 +17,6 @@ class DailyWeight(BaseModel):
     date: date
     value: float | None
 
-
 @router.get("/{petId}/weights/monthly", response_model=list[DailyWeight])
 async def get_monthly_weights(petId: str, month: str = Query(..., pattern=r"^\d{4}-\d{2}$")):
     year, mon = (int(part) for part in month.split("-"))
