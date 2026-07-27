@@ -3,10 +3,12 @@ from calendar import monthrange
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from app.core.database import get_database
 from app.models.pet import PetOut
+from app.core.deps import get_current_user
+from typing import Literal
 
 router = APIRouter(prefix="/api/v1/pets", tags=["pets"])
 
@@ -147,3 +149,62 @@ async def get_dashboard(petId: str):
         medicationsToday=medications_today,
         upcomingSchedule=upcoming_schedule,
     )
+
+class PetCreate(BaseModel):
+    name: str
+    species: Literal["dog", "cat"]
+    breed: str | None = None
+    birthDate: date
+    sex: Literal["female", "male"]
+    neutered: bool
+    weight: float
+    photoKey: str
+
+@router.post("", response_model=PetOut, status_code=201)
+async def create_pet(body: PetCreate, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    doc = {
+        "ownerId": ObjectId(user_id),
+        "name": body.name,
+        "species": body.species,
+        "breed": body.breed,
+        "birthDate": _to_datetime(body.birthDate),
+        "sex": body.sex,
+        "neutered": body.neutered,
+        "weight": body.weight,
+        "photoKey": body.photoKey,
+        "managedConditions": [],
+        "healthNotes": [],
+    }
+    result = await db.pets.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return PetOut.from_mongo(doc)
+
+@router.patch("/{petId}", response_model=PetOut)
+async def update_pet(petId: str, body: PetCreate, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    update = {
+        "name": body.name,
+        "species": body.species,
+        "breed": body.breed,
+        "birthDate": _to_datetime(body.birthDate),
+        "sex": body.sex,
+        "neutered": body.neutered,
+        "weight": body.weight,
+        "photoKey": body.photoKey,
+    }
+    doc = await db.pets.find_one_and_update(
+        {"_id": ObjectId(petId), "ownerId": ObjectId(user_id)},
+        {"$set": update},
+        return_document=True,
+    )
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    return PetOut.from_mongo(doc)
+
+@router.delete("/{petId}", status_code=204)
+async def delete_pet(petId: str, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    result = await db.pets.delete_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Pet not found")

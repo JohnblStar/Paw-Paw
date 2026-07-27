@@ -16,6 +16,7 @@ class PetOut(BaseModel):
     birthDate: date
     sex: Literal["female", "male"]
     neutered: bool
+    weight: float
     photoKey: str
     managedConditions: list[str] = []
     healthNotes: list[HealthNote] = []
@@ -31,6 +32,7 @@ class PetOut(BaseModel):
             birthDate=doc["birthDate"],
             sex=doc["sex"],
             neutered=doc["neutered"],
+            weight=doc["weight"],
             photoKey=doc["photoKey"],
             managedConditions=doc.get("managedConditions", []),
             healthNotes=[HealthNote(**note) for note in doc.get("healthNotes", [])],
