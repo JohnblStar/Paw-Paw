@@ -6,6 +6,8 @@ import KakaoCallbackPage from './pages/KakaoCallbackPage'
 import MainPage from './pages/MainPage'
 import Dashboard from './pages/Dashboard'
 import ComingSoon from './pages/ComingSoon'
+import MyPetsyPage from './pages/MyPetsyPage'
+import PetFormPage from './pages/PetFormPage'
 
 function App() {
   return (
@@ -25,7 +27,9 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/chatbot" element={<ComingSoon label="AI챗봇" />} />
         <Route path="/report" element={<ComingSoon label="건강 레포트" />} />
-        <Route path="/mypetsy" element={<ComingSoon label="마이펫이지" />} />
+        <Route path="/mypetsy" element={<MyPetsyPage />} />
+        <Route path="/mypetsy/new" element={<PetFormPage />} />
+        <Route path="/mypetsy/:id/edit" element={<PetFormPage />} />
       </Route>
     </Routes>
   )
