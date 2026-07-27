@@ -9,6 +9,7 @@ from app.core.database import get_database
 from app.models.pet import PetOut
 from app.core.deps import get_current_user
 from typing import Literal
+from app.models.weight import WeightOut
 
 router = APIRouter(prefix="/api/v1/pets", tags=["pets"])
 
@@ -208,3 +209,49 @@ async def delete_pet(petId: str, user_id: str = Depends(get_current_user)):
     result = await db.pets.delete_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Pet not found")
+
+class WeightCreate(BaseModel):
+    date: date
+    weight: float
+
+@router.post("/{petId}/weights", response_model=WeightOut, status_code=201)
+async def create_weight_entry(petId: str, body: WeightCreate, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    pet = await db.pets.find_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
+    if pet is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+    doc = await db.weights.find_one_and_update(
+        {"petId": ObjectId(petId), "date": _to_datetime(body.date)},
+        {"$set": {"value": body.weight}},
+        upsert=True,
+        return_document=True,
+    )
+    return WeightOut.from_mongo(doc)
+
+@router.patch("/{petId}/weights/{weightId}", response_model=WeightOut)
+async def update_weight_entry(petId: str, weightId: str, body: WeightCreate, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    pet = await db.pets.find_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
+    if pet is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+    doc = await db.weights.find_one_and_update(
+        {"_id": ObjectId(weightId), "petId": ObjectId(petId)},
+        {"$set": {"date": _to_datetime(body.date), "value": body.weight}},
+        return_document=True,
+    )
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Weight entry not found")
+    return WeightOut.from_mongo(doc)
+
+@router.delete("/{petId}/weights/{weightId}", status_code=204)
+async def delete_weight_entry(petId: str, weightId: str, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    pet = await db.pets.find_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
+    if pet is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+    result = await db.weights.delete_one({"_id": ObjectId(weightId), "petId": ObjectId(petId)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Weight entry not found")

@@ -12,6 +12,6 @@ class WeightOut(BaseModel):
         return cls(
             id=str(doc["_id"]),
             petId=str(doc["petId"]),
-            date=doc["date"],
+            date=doc["date"].date(),
             value=doc["value"],
         )
