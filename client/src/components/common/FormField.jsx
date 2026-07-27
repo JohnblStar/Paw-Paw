@@ -1,3 +1,7 @@
+export function ErrorText({ children }) {
+  return <p className="mt-1 text-xs text-coral">{children}</p>
+}
+
 export default function FormField({ label, htmlFor, error, hint, children }) {
   return (
     <div>
@@ -5,11 +9,7 @@ export default function FormField({ label, htmlFor, error, hint, children }) {
         {label}
       </label>
       {children}
-      {error ? (
-        <p className="mt-1 text-xs text-coral">{error}</p>
-      ) : (
-        hint && <p className="mt-1 text-xs text-ink-secondary">{hint}</p>
-      )}
+      {error ? <ErrorText>{error}</ErrorText> : hint && <p className="mt-1 text-xs text-ink-secondary">{hint}</p>}
     </div>
   )
 }

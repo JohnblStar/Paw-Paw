@@ -1,16 +1,14 @@
 import Card from '@/components/common/Card'
 import { calcAgeLabel } from '@/utils/petAge'
-import { resolvePetAvatar } from '@/constants/petAvatarPresets'
+import { getPetAvatarDisplay } from '@/constants/petAvatarPresets'
 import { SPECIES_LABEL, SEX_LABEL } from '@/constants/petLabels'
 
 export default function BasicInfoCard({ pet }) {
-  const avatar = resolvePetAvatar(pet)
-
   return (
     <Card>
       <div className="flex items-start gap-5">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary-mint text-xl font-bold text-ink">
-          {avatar ? avatar.emoji : pet.name.slice(0, 1)}
+          {getPetAvatarDisplay(pet)}
         </div>
 
         <div className="flex-1">

@@ -1,11 +1,9 @@
 import { Link } from 'react-router-dom'
 import { calcAgeLabel } from '@/utils/petAge'
-import { resolvePetAvatar } from '@/constants/petAvatarPresets'
+import { getPetAvatarDisplay } from '@/constants/petAvatarPresets'
 import { SPECIES_LABEL, SEX_LABEL } from '@/constants/petLabels'
 
 export default function PetCard({ pet, isActive, onCall }) {
-  const avatar = resolvePetAvatar(pet)
-
   return (
     <div
       className={`rounded-2xl border bg-white p-5 ${
@@ -14,7 +12,7 @@ export default function PetCard({ pet, isActive, onCall }) {
     >
       <div className="flex items-center gap-3">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-mint text-xl font-bold text-ink">
-          {avatar ? avatar.emoji : pet.name.slice(0, 1)}
+          {getPetAvatarDisplay(pet)}
         </div>
         <div>
           <p className="font-bold text-ink">{pet.name}</p>
