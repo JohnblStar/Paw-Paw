@@ -4,14 +4,23 @@ import Card from '@/components/common/Card'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
 import PetCard from '@/components/mypetsy/PetCard'
 import { usePet } from '@/context/usePet'
-import { mockOwner } from '@/mocks/petMock'
+import { useUser } from '@/context/useUser'
 
 export default function MyPetsyPage() {
-  const { pets, activePetId, setActivePetId } = usePet()
+  const { pets, activePetId, callPet, isLoading } = usePet()
+  const { user } = useUser()
+
+  if (isLoading) {
+    return (
+      <PageLayout>
+        <p className="text-sm text-ink-secondary">불러오는 중...</p>
+      </PageLayout>
+    )
+  }
 
   return (
     <PageLayout>
-      <h1 className="mb-1 text-xl font-bold text-ink">{mockOwner.name}님의 반려동물</h1>
+      <h1 className="mb-1 text-xl font-bold text-ink">{user?.name}님의 반려동물</h1>
       <p className="mb-6 text-sm text-ink-secondary">등록된 반려동물을 관리하고 전환할 수 있어요</p>
 
       {pets.length === 0 ? (
@@ -34,7 +43,7 @@ export default function MyPetsyPage() {
                 key={pet.id}
                 pet={pet}
                 isActive={pet.id === activePetId}
-                onCall={() => setActivePetId(pet.id)}
+                onCall={() => callPet(pet.id)}
               />
             ))}
           </div>

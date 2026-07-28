@@ -2,25 +2,15 @@ import { useMemo, useState } from 'react'
 import Card from '@/components/common/Card'
 import Modal from '@/components/common/Modal'
 import { buildMonthGrid } from '@/utils/calendarGrid'
+import { todayISO } from '@/utils/date'
 
 const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일']
 
-function synthesizeDayMeds(template, dayData) {
-  if (!dayData) return []
-  let remainingTaken = dayData.taken
-  return template.map((med) => {
-    const taken = remainingTaken > 0
-    if (taken) remainingTaken -= 1
-    return { ...med, taken }
-  })
-}
-
-export default function MonthlyMedCalendarCard({ monthData, detailByDate, medicationTemplate }) {
+export default function MonthlyMedCalendarCard({ monthData, todayMedications, onToggleToday }) {
+  const todayStr = todayISO()
   const today = new Date()
-  const todayStr = today.toISOString().slice(0, 10)
 
   const [selectedDate, setSelectedDate] = useState(null)
-  const [dayMeds, setDayMeds] = useState([])
 
   const dataByDate = useMemo(() => {
     const map = {}
@@ -36,15 +26,12 @@ export default function MonthlyMedCalendarCard({ monthData, detailByDate, medica
   const weeks = useMemo(() => buildMonthGrid(year, month, dataByDate), [year, month, dataByDate])
 
   const openDay = (cell) => {
-    if (!cell?.data || cell.date > todayStr) return
-    const detail = detailByDate[cell.date] ?? synthesizeDayMeds(medicationTemplate, cell.data)
+    if (!cell?.data) return
     setSelectedDate(cell.date)
-    setDayMeds(detail)
   }
 
-  const toggleMed = (id) => {
-    setDayMeds((prev) => prev.map((med) => (med.id === id ? { ...med, taken: !med.taken } : med)))
-  }
+  const isTodaySelected = selectedDate === todayStr
+  const selectedSummary = selectedDate ? dataByDate[selectedDate] : null
 
   return (
     <Card title="월간 복약 캘린더">
@@ -58,7 +45,7 @@ export default function MonthlyMedCalendarCard({ monthData, detailByDate, medica
         {weeks.flat().map((cell, index) => {
           if (!cell) return <div key={`blank-${index}`} />
 
-          const clickable = cell.data && cell.date <= todayStr
+          const clickable = Boolean(cell.data)
           const complete = cell.data && cell.data.taken === cell.data.total
 
           return (
@@ -87,29 +74,40 @@ export default function MonthlyMedCalendarCard({ monthData, detailByDate, medica
       </div>
 
       <Modal isOpen={Boolean(selectedDate)} onClose={() => setSelectedDate(null)} title={`${selectedDate} 복약 목록`}>
-        <ul className="flex flex-col gap-2">
-          {dayMeds.map((med) => (
-            <li key={med.id}>
-              <button
-                type="button"
-                onClick={() => toggleMed(med.id)}
-                className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"
-              >
-                <span className="text-ink">
-                  {med.name}
-                  <span className="ml-2 text-xs text-ink-secondary">{med.time}</span>
-                </span>
-                <span
-                  className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                    med.taken ? 'bg-primary-mint text-ink' : 'bg-bg border border-border text-muted'
-                  }`}
-                >
-                  {med.taken ? '✓' : ''}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        {isTodaySelected ? (
+          <ul className="flex flex-col gap-2">
+            {todayMedications.length === 0 ? (
+              <p className="text-sm text-ink-secondary">등록된 약이 없어요</p>
+            ) : (
+              todayMedications.map((med) => (
+                <li key={med.id}>
+                  <button
+                    type="button"
+                    onClick={() => onToggleToday(med.id)}
+                    className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"
+                  >
+                    <span className="text-ink">
+                      {med.name}
+                      <span className="ml-2 text-xs text-ink-secondary">{med.alertTimes?.join(', ')}</span>
+                    </span>
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                        med.taken ? 'bg-primary-mint text-ink' : 'bg-bg border border-border text-muted'
+                      }`}
+                    >
+                      {med.taken ? '✓' : ''}
+                    </span>
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        ) : (
+          <p className="text-sm text-ink-secondary">
+            그 날 복약 {selectedSummary?.taken}/{selectedSummary?.total}개 완료했어요. 지난 날짜의 개별 내역
+            수정은 지원하지 않아요.
+          </p>
+        )}
       </Modal>
     </Card>
   )

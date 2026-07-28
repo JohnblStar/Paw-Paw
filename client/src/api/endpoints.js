@@ -2,20 +2,24 @@ export const ENDPOINTS = {
   AUTH: {
     KAKAO_CALLBACK: '/api/v1/auth/kakao/callback',
   },
-  // NOTE: docs/features/mypetsy.md와 실제 백엔드(server/app/api/routes/pets.py, prefix=/api/v1/pets)는
-  // 이 파일과 경로 표기가 다르다. pet 라우트 실연동 시 백엔드 쪽과 재조율 필요.
+  USERS: {
+    ME: '/api/v1/users/me',
+    PETS: '/api/v1/users/pets',
+    CALL_PET: (petId) => `/api/v1/users/pets/${petId}/call`,
+  },
   PETS: {
-    LIST: '/api/pets',
-    DETAIL: (id) => `/api/pets/${id}`,
-    CREATE: '/api/pets',
-    UPDATE: (id) => `/api/pets/${id}`,
-    DELETE: (id) => `/api/pets/${id}`,
+    CREATE: '/api/v1/pets',
+    UPDATE: (petId) => `/api/v1/pets/${petId}`,
+    DELETE: (petId) => `/api/v1/pets/${petId}`,
+    DASHBOARD: (petId) => `/api/v1/pets/${petId}/dashboard`,
+    WEIGHTS: (petId) => `/api/v1/pets/${petId}/weights`,
+    WEIGHT_DETAIL: (petId, weightId) => `/api/v1/pets/${petId}/weights/${weightId}`,
+    MEDICATIONS_TODAY: (petId) => `/api/v1/pets/${petId}/medications/today`,
+    MEDICATIONS_CALENDAR: (petId) => `/api/v1/pets/${petId}/medications/calendar`,
+    MEDICATION_CHECK: (petId, medicationId) => `/api/v1/pets/${petId}/medications/${medicationId}/check`,
+    REPORT_MONTHLY: (petId) => `/api/v1/pets/${petId}/report/monthly`,
   },
   CHAT: {
-    SEND: '/api/chat',
-  },
-  REPORT: {
-    GENERATE: '/api/report',
-    DETAIL: (id) => `/api/report/${id}`,
+    QUERY: '/api/v1/chat/query',
   },
 }
