@@ -18,7 +18,7 @@ def _to_datetime(d: date) -> datetime:
 
 class DailyWeight(BaseModel):
     date: date
-    value: float | None
+    weight: float | None
 
 @router.get("/{petId}/weights/monthly", response_model=list[DailyWeight])
 async def get_monthly_weights(petId: str, month: str = Query(..., pattern=r"^\d{4}-\d{2}$")):
@@ -38,13 +38,13 @@ async def get_monthly_weights(petId: str, month: str = Query(..., pattern=r"^\d{
         day = month_start + timedelta(days=offset)
         if day in entries:
             last_value = entries[day]
-        result.append(DailyWeight(date=day, value=last_value))
+        result.append(DailyWeight(date=day, weight=last_value))
     return result
 
 class MedicationToday(BaseModel):
     id: str
-    title: str
-    checked: bool
+    name: str
+    taken: bool
 
 @router.get("/{petId}/medications/today", response_model=list[MedicationToday])
 async def get_today_medications(petId: str):
@@ -54,15 +54,15 @@ async def get_today_medications(petId: str):
     return [
         MedicationToday(
             id=str(doc["_id"]),
-            title=doc["title"],
-            checked=today in {d.date() for d in doc.get("completedDates", [])},
+            name=doc["title"],
+            taken=today in {d.date() for d in doc.get("completedDates", [])},
         )
         async for doc in cursor
     ]
 
 class DayMedicationSummary(BaseModel):
     date: date
-    completed: int
+    taken: int
     total: int
 
 @router.get("/{petId}/medications/calendar", response_model=list[DayMedicationSummary])
@@ -81,7 +81,7 @@ async def get_medications_calendar(petId: str, month: str = Query(..., pattern=r
                 completed_counts[completed_date.day] += 1
 
     return [
-        DayMedicationSummary(date=date(year, mon, day), completed=completed_counts[day], total=total)
+        DayMedicationSummary(date=date(year, mon, day), taken=completed_counts[day], total=total)
         for day in range(1, last_day + 1)
     ]
 
@@ -96,19 +96,19 @@ async def toggle_medication_check(petId: str, medicationId: str):
         {"$pull": {"completedDates": today_dt}},
     )
     if pulled.modified_count:
-        checked = False
+        taken = False
     else:
         await medications.update_one(
             {"_id": ObjectId(medicationId), "petId": ObjectId(petId)},
             {"$addToSet": {"completedDates": today_dt}},
         )
-        checked = True
+        taken = True
 
     doc = await medications.find_one({"_id": ObjectId(medicationId)})
-    return MedicationToday(id=str(doc["_id"]), title=doc["title"], checked=checked)
+    return MedicationToday(id=str(doc["_id"]), name=doc["title"], taken=taken)
 
 class ScheduleDDay(BaseModel):
-    title: str
+    name: str
     date: date
     dDay: int
 
@@ -122,7 +122,7 @@ async def get_upcoming_schedule_dday(petId: str) -> ScheduleDDay | None:
     if doc is None:
         return None
     schedule_date = doc["date"].date()
-    return ScheduleDDay(title=doc["title"], date=schedule_date, dDay=(schedule_date - today).days)
+    return ScheduleDDay(name=doc["title"], date=schedule_date, dDay=(schedule_date - today).days)
 
 class DashboardOut(BaseModel):
     pet: PetOut
@@ -261,13 +261,13 @@ async def delete_weight_entry(petId: str, weightId: str, user_id: str = Depends(
 
 class ScheduleItem(BaseModel):
     id: str
-    title: str
+    name: str
     date: date
 
 async def get_all_schedules(petId: str) -> list[ScheduleItem]:
     db = get_database()
     cursor = db.schedules.find({"petId": ObjectId(petId)}).sort("date", 1)
     return [
-        ScheduleItem(id=str(doc["_id"]), title=doc["title"], date=doc["date"].date())
+        ScheduleItem(id=str(doc["_id"]), name=doc["title"], date=doc["date"].date())
         async for doc in cursor
     ]

@@ -5,7 +5,7 @@ class WeightOut(BaseModel):
     id: str
     petId: str
     date: date
-    value: float
+    weight: float
 
     @classmethod
     def from_mongo(cls, doc: dict) -> "WeightOut":
@@ -13,5 +13,5 @@ class WeightOut(BaseModel):
             id=str(doc["_id"]),
             petId=str(doc["petId"]),
             date=doc["date"].date(),
-            value=doc["value"],
+            weight=doc["value"],
         )
