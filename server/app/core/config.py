@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     PORT: int = 8000
     MONGO_URI: str
     OPENAI_API_KEY: str = ""
+    OPENAI_BASE_URL: str = ""
+    OPENAI_MODEL: str = ""
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60 * 24 * 7

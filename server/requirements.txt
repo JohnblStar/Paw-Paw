@@ -18,3 +18,4 @@ uvicorn==0.51.0
 pydantic-settings
 python-jose[cryptography]
 httpx
+openai==2.49.0

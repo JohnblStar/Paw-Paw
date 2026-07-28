@@ -3,6 +3,9 @@
 ## 목표
 자유 텍스트를 LLM으로 파싱하는 대신, **키워드 감지 + 버튼/피커 기반 슬롯필링**으로
 복약·예방접종 정보를 정확하게 등록한다. LLM을 호출하지 않는다 (토큰 절약 핵심 지점).
+`docs/API_SPEC.md` §2.3은 `/chat/query`+`/chat/summary` 자유대화 흐름만 다루고 등록 API를 명시하지 않는데,
+이 문서의 슬롯필링은 그와 무관하게 별도로 유지한다 — CLAUDE.md 절대 규칙 4번(키워드/버튼 처리 가능 로직은 LLM 호출 안 함)과
+자유 텍스트 파싱 시 카카오 알림 시간/횟수 오등록 리스크 때문.
 
 ## 트리거
 - 자유 상담 중 "약 먹었어요", "접종했어요" 등 키워드가 감지되면 자동으로 "등록할까요?" 제안
@@ -29,6 +32,7 @@
 ```
 
 ## API
+`docs/API_SPEC.md` §2.2(약 관리)는 조회/체크 API만 다루며, 슬롯필링 등록 API는 이 문서가 유일한 명세다.
 - `POST /api/v1/pets/{petId}/medications` — 복약 등록
 - `POST /api/v1/pets/{petId}/schedules` — 예방접종 등록 (single_date 공용, 검진 등 확장 가능)
 - `PATCH /api/v1/pets/{petId}/medications/{id}` — 이름/시간 수정
