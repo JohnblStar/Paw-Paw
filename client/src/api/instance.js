@@ -2,7 +2,9 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  timeout: 10000,
+  // HAI-GPT를 직접 호출하는 /chat/query, /report/monthly는 응답에 10초 가까이 걸릴 수 있어
+  // 여유를 두고 30초로 설정한다 (나머지 엔드포인트는 모두 1초 이내 응답).
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },

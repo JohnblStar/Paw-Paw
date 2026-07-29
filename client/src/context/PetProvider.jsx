@@ -1,37 +1,59 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PetContext } from '@/context/PetContext'
-import { mockPets } from '@/mocks/petMock'
+import api from '@/api/instance'
+import { ENDPOINTS } from '@/api/endpoints'
 
 export function PetProvider({ children }) {
-  const [pets, setPets] = useState(mockPets)
-  const [activePetId, setActivePetId] = useState(mockPets[0]?.id ?? null)
+  const [pets, setPets] = useState([])
+  const [activePetId, setActivePetId] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // 백엔드에 pet 라우트가 생기면 이 자리에서 axios 호출로 교체 예정.
-  // 지금은 로컬 state만 즉시 갱신한다.
+  useEffect(() => {
+    let cancelled = false
+    api.get(ENDPOINTS.USERS.PETS).then((data) => {
+      if (cancelled) return
+      setPets(data)
+      setActivePetId(data.find((pet) => pet.isActive)?.id ?? data[0]?.id ?? null)
+      setIsLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const addPet = useCallback(async (petData) => {
-    const newPet = { id: `pet-${crypto.randomUUID()}`, managedConditions: [], ...petData }
+    const newPet = await api.post(ENDPOINTS.PETS.CREATE, petData)
     setPets((prev) => [...prev, newPet])
     setActivePetId((prev) => prev ?? newPet.id)
     return newPet
   }, [])
 
   const updatePet = useCallback(async (id, petData) => {
-    setPets((prev) => prev.map((pet) => (pet.id === id ? { ...pet, ...petData } : pet)))
+    const updated = await api.patch(ENDPOINTS.PETS.UPDATE(id), petData)
+    setPets((prev) => prev.map((pet) => (pet.id === id ? updated : pet)))
   }, [])
 
   const deletePet = useCallback(
     async (id) => {
-      const next = pets.filter((pet) => pet.id !== id)
-      setPets(next)
-      setActivePetId((current) => (current === id ? (next[0]?.id ?? null) : current))
+      await api.delete(ENDPOINTS.PETS.DELETE(id))
+      setPets((prev) => {
+        const next = prev.filter((pet) => pet.id !== id)
+        setActivePetId((current) => (current === id ? (next[0]?.id ?? null) : current))
+        return next
+      })
     },
-    [pets],
+    [],
   )
+
+  const callPet = useCallback(async (id) => {
+    await api.patch(ENDPOINTS.USERS.CALL_PET(id))
+    setActivePetId(id)
+  }, [])
 
   const value = useMemo(() => {
     const activePet = pets.find((pet) => pet.id === activePetId) ?? null
-    return { pets, activePet, activePetId, setActivePetId, addPet, updatePet, deletePet }
-  }, [pets, activePetId, addPet, updatePet, deletePet])
+    return { pets, activePet, activePetId, isLoading, callPet, addPet, updatePet, deletePet }
+  }, [pets, activePetId, isLoading, callPet, addPet, updatePet, deletePet])
 
   return <PetContext.Provider value={value}>{children}</PetContext.Provider>
 }

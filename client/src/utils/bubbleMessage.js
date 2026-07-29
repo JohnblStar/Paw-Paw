@@ -1,4 +1,4 @@
-import { flavorMessages } from '@/mocks/petMock'
+import { flavorMessages } from '@/constants/flavorMessages'
 
 /**
  * 메인페이지 말풍선 문구를 결정한다. docs/features/dashboard.md의 우선순위를 그대로 따른다.
