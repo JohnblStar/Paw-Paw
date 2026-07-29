@@ -6,15 +6,37 @@
 
 ## 컨텍스트 주입
 대화 시작 시 아래를 백그라운드로 읽어와 프롬프트에 **요약 형태로만** 포함 (전체 기록 통째로 넣지 않기 — 토큰 절약):
-- 반려동물 기본정보
+- 반려동물 기본정보(나이/체중/복용약)
 - 최근 체중 1~2개 값
 - 복용 중인 약 리스트
 - 최근 특이사항 1~2개
+- 캐싱된 품종 가이드 — **사용자에게는 비노출**, 답변 품질 향상 용도로만 조용히 포함 (`docs/features/breed-guide.md` 참고)
 
 ## 응답 규칙
 - 병명 언급 가능하지만 반드시 완곡한 추정형("~일지도 모릅니다")
-- 신뢰할 수 있는 출처 표기 필수
+- 신뢰할 수 있는 출처 표기 필수, **실존하지 않는 링크는 지어내지 않는다**
 - 이미 걸린 질병에 대한 질문이면 "이런 걸 조심하세요" 형태로 답변
+
+## 출처 표기 규칙
+`answerText`/`suspectedSymptom`에 붙는 `[출처: ...]`는 아래 고정 카테고리 라벨 3종 중 하나만 쓴다. 구체적인 논문/문서명을 생성하지 않는다 (`docs/SPEC.md` 6.4 참고).
+- 일반 수의학 상식
+- 품종별 유전질환 정보
+- 등록된 데이터 기반 추정
+
+## 답변 스타일 (순서 고정)
+1. 진단 가설 제시 ("~일지도 모릅니다" 식 완곡한 추정)
+2. 판단 가능한 기준 제시 (수치/증상 등 사용자가 직접 확인할 수 있는 근거)
+3. 잘못된 대처 시 경고
+4. 단계별 행동지침
+5. 필요시 "수의사 상담을 권장합니다"로 마무리
+
+## 증상 감지 방식
+- 명백히 무증상인 메시지는 규칙 기반으로 우선 걸러낸다 (LLM 호출 자체를 줄이는 용도는 아님 — 자유 상담은 항상 답변 생성이 필요하므로, 여기서는 대시보드 자동 기록 여부만 사전 필터링).
+- 애매한 경우 별도 API를 추가 호출하지 않고, 아래 "LLM 호출 최소화" 절의 통합 호출 결과(`isSymptomDetected`)를 그대로 판별 기준으로 사용한다.
+
+## 반복 질문 캐싱
+- 정규화된 질문 텍스트(공백/조사 등 정리 후 비교)를 기준으로 동일 질문의 응답을 캐싱한다.
+- TTL을 두어 일정 시간 지나면 캐시를 만료시키고 새로 호출한다.
 
 ## LLM 호출 최소화 (중요)
 한 번의 API 호출에서 아래 3가지를 함께 받도록 프롬프트/구조화 출력을 설계한다. 호출을 나누지 않는다.
@@ -26,10 +48,32 @@
   "suspectedSymptom": "string | null (병명 가능, 요약 모달 전용, 출처 포함)"
 }
 ```
+이 JSON은 **내부 LLM 출력 스키마**이며, 이미 `scripts/prompt-test/prompts.py`로 검증 완료되어 변경하지 않는다. HTTP 응답(`/chat/query`)에서는 아래 매핑을 거쳐 반환한다 (`docs/SPEC.md` 6.6 참고).
 
 ## API
-- `POST /api/v1/chat/query` — 위 구조화 응답 반환
-- `POST /api/v1/chat/sessions/{sessionId}/summary` — "답변 요약" 모달용 (대시보드 업로드 내용 + AI 의심증상 + 안내 멘트)
+- `POST /api/v1/chat/query` — 아래 매핑된 응답 반환 (`docs/API_SPEC.md` §2.3과 정합화, 라우트 핸들러에서 순수 후처리 — LLM 재호출 없음)
+  ```json
+  {
+    "reply": "string (= answerText 그대로)",
+    "isSymptomDetected": true,
+    "detectedSymptom": {
+      "area": "string | null (symptomSummary에서 정규식/키워드로 부위 추출 — 발/귀/눈/피부 등, LLM 미호출)",
+      "description": "string | null (= symptomSummary 그대로, 병명 없음)"
+    },
+    "suspectedSymptom": "string | null (= suspectedSymptom 그대로 — API_SPEC.md엔 없는 추가 필드, 요약모달용으로 유지)"
+  }
+  ```
+  > ⚠️ `detectedSymptom`이 대시보드(`healthStatus.symptoms`)에 저장되는 시점/엔드포인트가 아직 미정 — 김학래 확인 필요 (자동저장 vs `/chat/summary` 확인 후 저장 vs 별도 confirm API). 이 문서의 "UI 흐름"은 자동저장(isSymptomDetected===true 즉시 반영)을 가정하고 있음.
+- `POST /api/v1/chat/summary` — 세션리스(요청 바디 없음, `docs/API_SPEC.md` §2.3과 일치하도록 `sessionId` 경로 제거). "답변 요약" 모달용
+  ```json
+  {
+    "summaryTitle": "string",
+    "uploadedSymptoms": ["string, ... (세션 내 저장된 symptomSummary들)"],
+    "suspectedSymptoms": ["string (각 suspectedSymptom + [출처: 카테고리]), ..."],
+    "notice": "string (고정 면책 문구)"
+  }
+  ```
+  > ⚠️ 서버가 `sessionId` 없이 "현재 대화"만 추적하는 구조가 맞는지 김학래 확인 필요.
 
 ## UI 흐름
 1. 사용자 질문 입력

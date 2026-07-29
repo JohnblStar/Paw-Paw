@@ -5,6 +5,7 @@
 
 # 파이썬 가상환경 및 캐시 (리눅스/WSL2 대응)
 server/venv/
+scripts/prompt-test/venv/
 __pycache__/
 *.pyc
 .pytest_cache/
