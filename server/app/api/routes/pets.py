@@ -16,17 +16,26 @@ router = APIRouter(prefix="/api/v1/pets", tags=["pets"])
 def _to_datetime(d: date) -> datetime:
     return datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
 
+async def _get_owned_pet(db, petId: str, user_id: str) -> dict:
+    pet = await db.pets.find_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
+    if pet is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    return pet
+
 class DailyWeight(BaseModel):
     date: date
     weight: float | None
 
 @router.get("/{petId}/weights/monthly", response_model=list[DailyWeight])
-async def get_monthly_weights(petId: str, month: str = Query(..., pattern=r"^\d{4}-\d{2}$")):
+async def get_monthly_weights(
+    petId: str, month: str = Query(..., pattern=r"^\d{4}-\d{2}$"), user_id: str = Depends(get_current_user)
+):
     year, mon = (int(part) for part in month.split("-"))
     _, last_day = monthrange(year, mon)
     month_start = date(year, mon, 1)
 
     db = get_database()
+    await _get_owned_pet(db, petId, user_id)
     cursor = db.weights.find(
         {"petId": ObjectId(petId), "date": {"$lte": _to_datetime(date(year, mon, last_day))}}
     ).sort("date", 1)
@@ -44,17 +53,20 @@ async def get_monthly_weights(petId: str, month: str = Query(..., pattern=r"^\d{
 class MedicationToday(BaseModel):
     id: str
     name: str
+    alertTimes: list[str] = []
     taken: bool
 
 @router.get("/{petId}/medications/today", response_model=list[MedicationToday])
-async def get_today_medications(petId: str):
+async def get_today_medications(petId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
+    await _get_owned_pet(db, petId, user_id)
     today = date.today()
     cursor = db.medications.find({"petId": ObjectId(petId)})
     return [
         MedicationToday(
             id=str(doc["_id"]),
             name=doc["title"],
+            alertTimes=doc.get("alertTimes", []),
             taken=today in {d.date() for d in doc.get("completedDates", [])},
         )
         async for doc in cursor
@@ -66,11 +78,14 @@ class DayMedicationSummary(BaseModel):
     total: int
 
 @router.get("/{petId}/medications/calendar", response_model=list[DayMedicationSummary])
-async def get_medications_calendar(petId: str, month: str = Query(..., pattern=r"^\d{4}-\d{2}$")):
+async def get_medications_calendar(
+    petId: str, month: str = Query(..., pattern=r"^\d{4}-\d{2}$"), user_id: str = Depends(get_current_user)
+):
     year, mon = (int(part) for part in month.split("-"))
     _, last_day = monthrange(year, mon)
 
     db = get_database()
+    await _get_owned_pet(db, petId, user_id)
     medications = [doc async for doc in db.medications.find({"petId": ObjectId(petId)})]
     total = len(medications)
 
@@ -86,8 +101,9 @@ async def get_medications_calendar(petId: str, month: str = Query(..., pattern=r
     ]
 
 @router.patch("/{petId}/medications/{medicationId}/check", response_model=MedicationToday)
-async def toggle_medication_check(petId: str, medicationId: str):
+async def toggle_medication_check(petId: str, medicationId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
+    await _get_owned_pet(db, petId, user_id)
     today_dt = _to_datetime(date.today())
     medications = db.medications
 
@@ -105,7 +121,9 @@ async def toggle_medication_check(petId: str, medicationId: str):
         taken = True
 
     doc = await medications.find_one({"_id": ObjectId(medicationId)})
-    return MedicationToday(id=str(doc["_id"]), name=doc["title"], taken=taken)
+    return MedicationToday(
+        id=str(doc["_id"]), name=doc["title"], alertTimes=doc.get("alertTimes", []), taken=taken
+    )
 
 class ScheduleDDay(BaseModel):
     name: str
@@ -124,6 +142,11 @@ async def get_upcoming_schedule_dday(petId: str) -> ScheduleDDay | None:
     schedule_date = doc["date"].date()
     return ScheduleDDay(name=doc["title"], date=schedule_date, dDay=(schedule_date - today).days)
 
+class ScheduleItem(BaseModel):
+    id: str
+    name: str
+    date: date
+
 class DashboardOut(BaseModel):
     pet: PetOut
     weights: list[DailyWeight]
@@ -132,16 +155,14 @@ class DashboardOut(BaseModel):
     schedules: list[ScheduleItem]
 
 @router.get("/{petId}/dashboard", response_model=DashboardOut)
-async def get_dashboard(petId: str):
+async def get_dashboard(petId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
-    pet_doc = await db.pets.find_one({"_id": ObjectId(petId)})
-    if pet_doc is None:
-        raise HTTPException(status_code=404, detail="Pet not found")
+    pet_doc = await _get_owned_pet(db, petId, user_id)
 
     current_month = date.today().strftime("%Y-%m")
     weights, medications_today, upcoming_schedule, schedules = await asyncio.gather(
-        get_monthly_weights(petId, current_month),
-        get_today_medications(petId),
+        get_monthly_weights(petId, current_month, user_id),
+        get_today_medications(petId, user_id),
         get_upcoming_schedule_dday(petId),
         get_all_schedules(petId),
     )
@@ -182,6 +203,15 @@ async def create_pet(body: PetCreate, user_id: str = Depends(get_current_user)):
     }
     result = await db.pets.insert_one(doc)
     doc["_id"] = result.inserted_id
+
+    # 아직 활성 펫이 없는 유저(첫 펫 등록)라면 자동으로 활성 펫으로 지정한다.
+    # 프론트는 펫이 1개뿐이면 이미 활성으로 취급해 "부르기" 버튼을 보여주지 않으므로,
+    # 이 자동 지정 없이는 /chat/query(활성 펫 기준)가 영원히 404를 내게 된다.
+    await db.users.update_one(
+        {"_id": ObjectId(user_id), "activePetId": {"$exists": False}},
+        {"$set": {"activePetId": result.inserted_id}},
+    )
+
     return PetOut.from_mongo(doc)
 
 @router.patch("/{petId}", response_model=PetOut)
@@ -217,12 +247,17 @@ class WeightCreate(BaseModel):
     date: date
     weight: float
 
+@router.get("/{petId}/weights", response_model=list[WeightOut])
+async def get_weight_entries(petId: str, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+    cursor = db.weights.find({"petId": ObjectId(petId)}).sort("date", -1)
+    return [WeightOut.from_mongo(doc) async for doc in cursor]
+
 @router.post("/{petId}/weights", response_model=WeightOut, status_code=201)
 async def create_weight_entry(petId: str, body: WeightCreate, user_id: str = Depends(get_current_user)):
     db = get_database()
-    pet = await db.pets.find_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
-    if pet is None:
-        raise HTTPException(status_code=404, detail="Pet not found")
+    await _get_owned_pet(db, petId, user_id)
 
     doc = await db.weights.find_one_and_update(
         {"petId": ObjectId(petId), "date": _to_datetime(body.date)},
@@ -235,9 +270,7 @@ async def create_weight_entry(petId: str, body: WeightCreate, user_id: str = Dep
 @router.patch("/{petId}/weights/{weightId}", response_model=WeightOut)
 async def update_weight_entry(petId: str, weightId: str, body: WeightCreate, user_id: str = Depends(get_current_user)):
     db = get_database()
-    pet = await db.pets.find_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
-    if pet is None:
-        raise HTTPException(status_code=404, detail="Pet not found")
+    await _get_owned_pet(db, petId, user_id)
 
     doc = await db.weights.find_one_and_update(
         {"_id": ObjectId(weightId), "petId": ObjectId(petId)},
@@ -251,18 +284,11 @@ async def update_weight_entry(petId: str, weightId: str, body: WeightCreate, use
 @router.delete("/{petId}/weights/{weightId}", status_code=204)
 async def delete_weight_entry(petId: str, weightId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
-    pet = await db.pets.find_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
-    if pet is None:
-        raise HTTPException(status_code=404, detail="Pet not found")
+    await _get_owned_pet(db, petId, user_id)
 
     result = await db.weights.delete_one({"_id": ObjectId(weightId), "petId": ObjectId(petId)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Weight entry not found")
-
-class ScheduleItem(BaseModel):
-    id: str
-    name: str
-    date: date
 
 async def get_all_schedules(petId: str) -> list[ScheduleItem]:
     db = get_database()
