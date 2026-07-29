@@ -243,6 +243,22 @@ async def delete_pet(petId: str, user_id: str = Depends(get_current_user)):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Pet not found")
 
+    # 삭제한 펫이 활성 펫이었다면, 다른 펫으로 넘겨주거나(없으면 비워서)
+    # activePetId가 이미 사라진 펫을 계속 가리키는 상태를 방지한다.
+    user = await db.users.find_one({"_id": ObjectId(user_id), "activePetId": ObjectId(petId)})
+    if user is not None:
+        remaining_pet = await db.pets.find_one({"ownerId": ObjectId(user_id)})
+        if remaining_pet is not None:
+            await db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$set": {"activePetId": remaining_pet["_id"]}},
+            )
+        else:
+            await db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$unset": {"activePetId": ""}},
+            )
+
 class WeightCreate(BaseModel):
     date: date
     weight: float
