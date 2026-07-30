@@ -74,11 +74,12 @@ function DashboardContent({ pet }) {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TodayMedicationCard
+              petId={pet.id}
               medications={dashboardData.medicationsToday}
               onToggle={handleToggleMedication}
               onSaved={refetch}
             />
-            <VaccinationListCard vaccinations={dashboardData.schedules} onSaved={refetch} />
+            <VaccinationListCard petId={pet.id} vaccinations={dashboardData.schedules} onSaved={refetch} />
           </div>
 
           <WeightGraphCard petId={pet.id} data={graphPoints} entries={weightEntries} />

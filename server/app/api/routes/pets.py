@@ -409,3 +409,28 @@ async def create_schedule(petId: str, body: ScheduleCreate, user_id: str = Depen
     result = await db.schedules.insert_one(doc)
     doc["_id"] = result.inserted_id
     return ScheduleOut.from_mongo(doc)
+
+@router.patch("/{petId}/schedules/{scheduleId}", response_model=ScheduleOut)
+async def update_schedule(
+    petId: str, scheduleId: str, body: ScheduleCreate, user_id: str = Depends(get_current_user)
+):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+
+    doc = await db.schedules.find_one_and_update(
+        {"_id": ObjectId(scheduleId), "petId": ObjectId(petId)},
+        {"$set": {"title": body.title, "date": _to_datetime(body.date)}},
+        return_document=True,
+    )
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    return ScheduleOut.from_mongo(doc)
+
+@router.delete("/{petId}/schedules/{scheduleId}", status_code=204)
+async def delete_schedule(petId: str, scheduleId: str, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+
+    result = await db.schedules.delete_one({"_id": ObjectId(scheduleId), "petId": ObjectId(petId)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Schedule not found")
