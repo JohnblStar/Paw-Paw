@@ -17,6 +17,9 @@ export const ENDPOINTS = {
     MEDICATIONS_TODAY: (petId) => `/api/v1/pets/${petId}/medications/today`,
     MEDICATIONS_CALENDAR: (petId) => `/api/v1/pets/${petId}/medications/calendar`,
     MEDICATION_CHECK: (petId, medicationId) => `/api/v1/pets/${petId}/medications/${medicationId}/check`,
+    MEDICATIONS: (petId) => `/api/v1/pets/${petId}/medications`,
+    MEDICATION_DETAIL: (petId, medicationId) => `/api/v1/pets/${petId}/medications/${medicationId}`,
+    SCHEDULES: (petId) => `/api/v1/pets/${petId}/schedules`,
     REPORT_MONTHLY: (petId) => `/api/v1/pets/${petId}/report/monthly`,
   },
   CHAT: {

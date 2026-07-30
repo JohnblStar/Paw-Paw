@@ -76,8 +76,9 @@ function DashboardContent({ pet }) {
             <TodayMedicationCard
               medications={dashboardData.medicationsToday}
               onToggle={handleToggleMedication}
+              onSaved={refetch}
             />
-            <VaccinationListCard vaccinations={dashboardData.schedules} />
+            <VaccinationListCard vaccinations={dashboardData.schedules} onSaved={refetch} />
           </div>
 
           <WeightGraphCard petId={pet.id} data={graphPoints} entries={weightEntries} />

@@ -11,7 +11,7 @@ class HaiGptError(Exception):
     pass
 
 
-async def call_json(system_prompt: str, user_message: str, *, max_tokens: int = 1500) -> dict:
+async def call_json(system_prompt: str, user_message: str, *, max_tokens: int = 600) -> dict:
     """HAI-GPT를 JSON 모드로 호출하고 파싱된 dict를 반환한다."""
     try:
         response = await _client.chat.completions.create(
