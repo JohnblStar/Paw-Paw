@@ -1,6 +1,6 @@
 const VIEW_WIDTH = 560
 const VIEW_HEIGHT = 200
-const PADDING = { top: 16, right: 16, bottom: 24, left: 32 }
+const PADDING = { top: 24, right: 16, bottom: 24, left: 32 }
 
 export default function WeightLineChart({ points }) {
   if (!points || points.length === 0) {
@@ -41,10 +41,25 @@ export default function WeightLineChart({ points }) {
 
       <path d={linePath} fill="none" stroke="var(--color-primary-mint-dark)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
 
-      <circle cx={last.x} cy={last.y} r="4" fill="var(--color-primary-mint-dark)" />
-      <text x={last.x} y={last.y - 10} textAnchor="end" className="fill-ink text-[10px] font-semibold">
-        {last.point.weight}kg
-      </text>
+      {coords.map((c, index) => {
+        const prev = coords[index - 1]
+        const next = coords[index + 1]
+        const isValley = prev && next && c.y > prev.y && c.y > next.y
+        const labelY = isValley ? c.y - 20 : c.y - 10
+        return (
+          <g key={c.point.date}>
+            <circle cx={c.x} cy={c.y} r="4" fill="var(--color-primary-mint-dark)" />
+            <text
+              x={c.x}
+              y={labelY}
+              textAnchor="middle"
+              className="fill-ink text-[10px] font-semibold"
+            >
+              {c.point.weight}kg
+            </text>
+          </g>
+        )
+      })}
 
       {coords.map((c, index) =>
         index % labelStep === 0 ? (

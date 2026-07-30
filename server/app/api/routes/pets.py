@@ -41,10 +41,13 @@ async def get_monthly_weights(
     ).sort("date", 1)
     entries = {doc["date"].date(): doc["value"] async for doc in cursor}
 
+    today = date.today()
     last_value = None
     result = []
     for offset in range(last_day):
         day = month_start + timedelta(days=offset)
+        if day > today:
+            break
         if day in entries:
             last_value = entries[day]
         result.append(DailyWeight(date=day, weight=last_value))
@@ -125,6 +128,54 @@ async def toggle_medication_check(petId: str, medicationId: str, user_id: str = 
         id=str(doc["_id"]), name=doc["title"], alertTimes=doc.get("alertTimes", []), taken=taken
     )
 
+class MedicationCreate(BaseModel):
+    title: str
+    frequencyPerDay: int
+    alertTimes: list[str]
+
+@router.post("/{petId}/medications", response_model=MedicationToday, status_code=201)
+async def create_medication(petId: str, body: MedicationCreate, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+    doc = {
+        "petId": ObjectId(petId),
+        "title": body.title,
+        "frequencyPerDay": body.frequencyPerDay,
+        "alertTimes": body.alertTimes,
+        "completedDates": [],
+    }
+    result = await db.medications.insert_one(doc)
+    return MedicationToday(id=str(result.inserted_id), name=body.title, alertTimes=body.alertTimes, taken=False)
+
+@router.patch("/{petId}/medications/{medicationId}", response_model=MedicationToday)
+async def update_medication(
+    petId: str, medicationId: str, body: MedicationCreate, user_id: str = Depends(get_current_user)
+):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+    doc = await db.medications.find_one_and_update(
+        {"_id": ObjectId(medicationId), "petId": ObjectId(petId)},
+        {"$set": {"title": body.title, "frequencyPerDay": body.frequencyPerDay, "alertTimes": body.alertTimes}},
+        return_document=True,
+    )
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Medication not found")
+    today = date.today()
+    return MedicationToday(
+        id=str(doc["_id"]),
+        name=doc["title"],
+        alertTimes=doc.get("alertTimes", []),
+        taken=today in {d.date() for d in doc.get("completedDates", [])},
+    )
+
+@router.delete("/{petId}/medications/{medicationId}", status_code=204)
+async def delete_medication(petId: str, medicationId: str, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+    result = await db.medications.delete_one({"_id": ObjectId(medicationId), "petId": ObjectId(petId)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Medication not found")
+
 class ScheduleDDay(BaseModel):
     name: str
     date: date
@@ -169,7 +220,7 @@ async def get_dashboard(petId: str, user_id: str = Depends(get_current_user)):
 
     return DashboardOut(
         pet=PetOut.from_mongo(pet_doc),
-        weights=weights,
+        weights=weights[-5:],
         medicationsToday=medications_today,
         upcomingSchedule=upcoming_schedule,
         schedules=schedules,
@@ -308,8 +359,50 @@ async def delete_weight_entry(petId: str, weightId: str, user_id: str = Depends(
 
 async def get_all_schedules(petId: str) -> list[ScheduleItem]:
     db = get_database()
-    cursor = db.schedules.find({"petId": ObjectId(petId)}).sort("date", 1)
+    cursor = db.schedules.find(
+        {"petId": ObjectId(petId), "date": {"$gte": _to_datetime(date.today())}}
+    ).sort("date", 1)
+
     return [
         ScheduleItem(id=str(doc["_id"]), name=doc["title"], date=doc["date"].date())
         async for doc in cursor
     ]
+
+class ScheduleCreate(BaseModel):
+    title: str
+    date: date
+
+@router.post("/{petId}/schedules", response_model=ScheduleItem, status_code=201)
+async def create_schedule(petId: str, body: ScheduleCreate, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+    doc = {
+        "petId": ObjectId(petId),
+        "title": body.title,
+        "date": _to_datetime(body.date),
+    }
+    result = await db.schedules.insert_one(doc)
+    return ScheduleItem(id=str(result.inserted_id), name=body.title, date=body.date)
+
+@router.patch("/{petId}/schedules/{scheduleId}", response_model=ScheduleItem)
+async def update_schedule(
+    petId: str, scheduleId: str, body: ScheduleCreate, user_id: str = Depends(get_current_user)
+):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+    doc = await db.schedules.find_one_and_update(
+        {"_id": ObjectId(scheduleId), "petId": ObjectId(petId)},
+        {"$set": {"title": body.title, "date": _to_datetime(body.date)}},
+        return_document=True,
+    )
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    return ScheduleItem(id=str(doc["_id"]), name=doc["title"], date=doc["date"].date())
+
+@router.delete("/{petId}/schedules/{scheduleId}", status_code=204)
+async def delete_schedule(petId: str, scheduleId: str, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+    result = await db.schedules.delete_one({"_id": ObjectId(scheduleId), "petId": ObjectId(petId)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Schedule not found")
