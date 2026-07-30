@@ -63,7 +63,7 @@
     "suspectedSymptom": "string | null (= suspectedSymptom 그대로 — API_SPEC.md엔 없는 추가 필드, 요약모달용으로 유지)"
   }
   ```
-  > ⚠️ `detectedSymptom`이 대시보드(`healthStatus.symptoms`)에 저장되는 시점/엔드포인트가 아직 미정 — 김학래 확인 필요 (자동저장 vs `/chat/summary` 확인 후 저장 vs 별도 confirm API). 이 문서의 "UI 흐름"은 자동저장(isSymptomDetected===true 즉시 반영)을 가정하고 있음.
+  > ✅ 구현 완료 — `detectedSymptom`은 자동저장 방식으로 확정. `isSymptomDetected===true`면 `/chat/query` 응답 시점에 바로 `pet.healthNotes`에 병명 없이 push된다(확인 단계 없음). 이때 `suspectedSymptom`도 같은 healthNotes 서브도큐먼트에 함께 저장해(`HealthNote.suspectedSymptom` 필드 추가) `/chat/summary`가 재구성할 수 있게 한다.
 - `POST /api/v1/chat/summary` — 세션리스(요청 바디 없음, `docs/API_SPEC.md` §2.3과 일치하도록 `sessionId` 경로 제거). "답변 요약" 모달용
   ```json
   {
@@ -73,7 +73,7 @@
     "notice": "string (고정 면책 문구)"
   }
   ```
-  > ⚠️ 서버가 `sessionId` 없이 "현재 대화"만 추적하는 구조가 맞는지 김학래 확인 필요.
+  > ✅ 구현 완료 — 서버는 별도 `sessionId`를 추적하지 않고, "현재 세션"을 **오늘 이 반려동물에 대해 감지된 증상 전체**로 정의한다. `pet.healthNotes`가 이미 날짜별로 쌓이므로 당일(`date == today`) 항목만 필터링해 `uploadedSymptoms`/`suspectedSymptoms`로 재구성 — 별도 저장소 없이 healthNotes를 재사용한다.
 
 ## UI 흐름
 1. 사용자 질문 입력

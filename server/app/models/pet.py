@@ -6,6 +6,7 @@ class HealthNote(BaseModel):
     date: date
     bodyPart: str
     note: str
+    suspectedSymptom: str | None = None
 
 class PetOut(BaseModel):
     id: str
