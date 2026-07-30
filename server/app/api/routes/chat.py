@@ -5,7 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.database import get_database
 from app.core.deps import get_current_user
-from app.models.chat import ChatQueryRequest, ChatQueryResponse, DetectedSymptom, RegistrationSuggestion
+from app.models.chat import (
+    ChatQueryRequest,
+    ChatQueryResponse,
+    ChatSummaryResponse,
+    DetectedSymptom,
+    RegistrationSuggestion,
+)
 from app.services import prompts
 from app.services.hai_gpt import HaiGptError, call_json
 
@@ -145,6 +151,7 @@ async def chat_query(body: ChatQueryRequest, user_id: str = Depends(get_current_
                 "date": _to_datetime(date.today()),
                 "bodyPart": area or "기타",
                 "note": symptom_summary,
+                "suspectedSymptom": suspected_symptom,
             }}},
         )
 
@@ -154,4 +161,29 @@ async def chat_query(body: ChatQueryRequest, user_id: str = Depends(get_current_
         detectedSymptom=detected_symptom,
         suspectedSymptom=suspected_symptom,
         registrationSuggestion=registration_suggestion,
+    )
+
+
+# "현재 세션"은 서버가 별도 sessionId를 추적하지 않으므로 "오늘 이 펫에 대해 감지된 증상들"로
+# 정의한다 — healthNotes가 이미 날짜별로 쌓이므로 추가 저장소 없이 당일치만 필터링해서 재사용한다.
+@router.post("/summary", response_model=ChatSummaryResponse)
+async def chat_summary(user_id: str = Depends(get_current_user)):
+    db = get_database()
+    user_doc = await db.users.find_one({"_id": ObjectId(user_id)})
+    active_pet_id = user_doc.get("activePetId") if user_doc else None
+    if active_pet_id is None:
+        raise HTTPException(status_code=404, detail="활성화된 반려동물이 없습니다")
+
+    pet_doc = await db.pets.find_one({"_id": active_pet_id, "ownerId": ObjectId(user_id)})
+    if pet_doc is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+    today = date.today()
+    today_notes = [n for n in pet_doc.get("healthNotes", []) if n["date"].date() == today]
+
+    return ChatSummaryResponse(
+        summaryTitle=f"{pet_doc['name']} 답변 요약 문서",
+        uploadedSymptoms=[n["note"] for n in today_notes],
+        suspectedSymptoms=[n["suspectedSymptom"] for n in today_notes if n.get("suspectedSymptom")],
+        notice="본 요약에 대한 자세한 근거는 답변 전체를 확인해 주세요.",
     )
