@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.database import get_database
 from app.core.deps import get_current_user
-from app.models.chat import ChatQueryRequest, ChatQueryResponse, DetectedSymptom
+from app.models.chat import ChatQueryRequest, ChatQueryResponse, DetectedSymptom, RegistrationSuggestion
 from app.services import prompts
 from app.services.hai_gpt import HaiGptError, call_json
 
@@ -24,6 +24,19 @@ def _extract_area(text: str | None) -> str | None:
     for keyword in BODY_PART_KEYWORDS:
         if keyword in text:
             return keyword
+    return None
+
+
+# 등록 감지기 — 증상 감지기와 병행 동작하는 별도 감지기, LLM 미호출 (토큰 절약 원칙)
+MEDICATION_TRIGGER_KEYWORDS = ["약 먹었", "약 줬", "약을 먹", "복용했", "약 먹여", "약 챙겨줬"]
+VACCINATION_TRIGGER_KEYWORDS = ["접종했", "예방접종", "주사 맞", "백신 맞", "검진 받", "검진했"]
+
+
+def _detect_registration_intent(text: str) -> RegistrationSuggestion | None:
+    if any(keyword in text for keyword in MEDICATION_TRIGGER_KEYWORDS):
+        return RegistrationSuggestion(type="medication")
+    if any(keyword in text for keyword in VACCINATION_TRIGGER_KEYWORDS):
+        return RegistrationSuggestion(type="single_date")
     return None
 
 
@@ -104,6 +117,7 @@ async def chat_query(body: ChatQueryRequest, user_id: str = Depends(get_current_
 
     context_block = await _build_context_block(pet_doc)
     system_prompt = prompts.CONSULT_SYSTEM_PROMPT + "\n\n" + context_block
+    registration_suggestion = _detect_registration_intent(body.message)
 
     try:
         result = await call_json(system_prompt, body.message)
@@ -113,6 +127,7 @@ async def chat_query(body: ChatQueryRequest, user_id: str = Depends(get_current_
             isSymptomDetected=False,
             detectedSymptom=None,
             suspectedSymptom=None,
+            registrationSuggestion=registration_suggestion,
         )
 
     is_detected = bool(result.get("isSymptomDetected"))
@@ -138,4 +153,5 @@ async def chat_query(body: ChatQueryRequest, user_id: str = Depends(get_current_
         isSymptomDetected=is_detected,
         detectedSymptom=detected_symptom,
         suspectedSymptom=suspected_symptom,
+        registrationSuggestion=registration_suggestion,
     )

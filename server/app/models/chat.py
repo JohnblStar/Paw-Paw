@@ -1,3 +1,4 @@
+from typing import Literal
 from pydantic import BaseModel
 
 
@@ -10,8 +11,13 @@ class DetectedSymptom(BaseModel):
     description: str | None
 
 
+class RegistrationSuggestion(BaseModel):
+    type: Literal["medication", "single_date"]
+
+
 class ChatQueryResponse(BaseModel):
     reply: str
     isSymptomDetected: bool
     detectedSymptom: DetectedSymptom | None
     suspectedSymptom: str | None
+    registrationSuggestion: RegistrationSuggestion | None = None
