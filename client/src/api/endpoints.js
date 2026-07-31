@@ -20,6 +20,7 @@ export const ENDPOINTS = {
     MEDICATIONS: (petId) => `/api/v1/pets/${petId}/medications`,
     MEDICATION_DETAIL: (petId, medicationId) => `/api/v1/pets/${petId}/medications/${medicationId}`,
     SCHEDULES: (petId) => `/api/v1/pets/${petId}/schedules`,
+    SCHEDULE_DETAIL: (petId, scheduleId) => `/api/v1/pets/${petId}/schedules/${scheduleId}`,
     REPORT_MONTHLY: (petId) => `/api/v1/pets/${petId}/report/monthly`,
     AI_BREED: (petId) => `/api/v1/pets/${petId}/ai-breed`,
     NOTIFICATIONS: (petId) => `/api/v1/pets/${petId}/notifications`,

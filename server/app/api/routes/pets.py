@@ -245,6 +245,9 @@ async def get_dashboard(petId: str, user_id: str = Depends(get_current_user)):
         get_all_schedules(petId),
     )
 
+    latest_weight = await db.weights.find_one({"petId": ObjectId(petId)}, sort=[("date", -1)])
+    if latest_weight is not None:
+        pet_doc["weight"] = latest_weight["value"]
     return DashboardOut(
         pet=PetOut.from_mongo(pet_doc),
         weights=weights[-5:],
@@ -412,6 +415,31 @@ async def create_schedule(petId: str, body: ScheduleCreate, user_id: str = Depen
     result = await db.schedules.insert_one(doc)
     doc["_id"] = result.inserted_id
     return ScheduleOut.from_mongo(doc)
+
+@router.patch("/{petId}/schedules/{scheduleId}", response_model=ScheduleOut)
+async def update_schedule(
+    petId: str, scheduleId: str, body: ScheduleCreate, user_id: str = Depends(get_current_user)
+):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+
+    doc = await db.schedules.find_one_and_update(
+        {"_id": ObjectId(scheduleId), "petId": ObjectId(petId)},
+        {"$set": {"title": body.title, "date": _to_datetime(body.date)}},
+        return_document=True,
+    )
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    return ScheduleOut.from_mongo(doc)
+
+@router.delete("/{petId}/schedules/{scheduleId}", status_code=204)
+async def delete_schedule(petId: str, scheduleId: str, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+
+    result = await db.schedules.delete_one({"_id": ObjectId(scheduleId), "petId": ObjectId(petId)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Schedule not found")
 
 class BreedGuideRequest(BaseModel):
     rawBreedInput: str = Field(min_length=1)

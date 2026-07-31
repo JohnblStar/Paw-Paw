@@ -34,8 +34,8 @@ def _extract_area(text: str | None) -> str | None:
 
 
 # 등록 감지기 — 증상 감지기와 병행 동작하는 별도 감지기, LLM 미호출 (토큰 절약 원칙)
-MEDICATION_TRIGGER_KEYWORDS = ["약 먹었", "약 줬", "약을 먹", "복용했", "약 먹여", "약 챙겨줬"]
-VACCINATION_TRIGGER_KEYWORDS = ["접종했", "예방접종", "주사 맞", "백신 맞", "검진 받", "검진했"]
+MEDICATION_TRIGGER_KEYWORDS = ["약 먹었", "약 줬", "약을 먹", "복용했", "약 먹여", "약 챙겨줬", "등록"]
+VACCINATION_TRIGGER_KEYWORDS = ["접종했", "예방접종", "주사 맞", "백신 맞", "검진 받", "검진했", "검진"]
 
 
 def _detect_registration_intent(text: str) -> RegistrationSuggestion | None:

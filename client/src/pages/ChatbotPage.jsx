@@ -11,7 +11,7 @@ import { ENDPOINTS } from '@/api/endpoints'
 
 const INTRO_MESSAGE = {
   role: 'assistant',
-  text: '안녕하세요! 반려동물의 건강이 궁금하신가요? 자유롭게 물어봐 주세요.',
+  text: '안녕하세요! 반려동물의 건강이 궁금하신가요? 자유롭게 물어봐 주세요.\n약 등록은 "등록", 예방접종/검진 등록은 "예방접종" 또는 "검진"이라고 입력해주세요.',
 }
 
 const REGISTRATION_SUGGESTION_LABEL = {
