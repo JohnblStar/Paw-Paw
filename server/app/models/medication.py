@@ -1,13 +1,17 @@
 from datetime import date
 from pydantic import BaseModel
 
+class MedicationDoseLog(BaseModel):
+    date: date
+    slots: list[bool]
+
 class MedicationOut(BaseModel):
     id: str
     petId: str
     title: str
     frequencyPerDay: int
     alertTimes: list[str]
-    completedDates: list[date] = []
+    doseLog: list[MedicationDoseLog] = []
 
     @classmethod
     def from_mongo(cls, doc: dict) -> "MedicationOut":
@@ -17,5 +21,5 @@ class MedicationOut(BaseModel):
             title=doc["title"],
             frequencyPerDay=doc["frequencyPerDay"],
             alertTimes=doc.get("alertTimes", []),
-            completedDates=doc.get("completedDates", []),
+            doseLog=doc.get("doseLog", []),
         )

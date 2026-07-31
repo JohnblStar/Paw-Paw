@@ -61,8 +61,10 @@ function DashboardContent({ pet }) {
     setMonthCalendar(result.monthCalendar)
   }
 
-  const handleToggleMedication = async (medicationId) => {
-    await api.patch(ENDPOINTS.PETS.MEDICATION_CHECK(pet.id, medicationId))
+  const handleToggleMedication = async (medicationId, slotIndex) => {
+    await api.patch(ENDPOINTS.PETS.MEDICATION_CHECK(pet.id, medicationId), null, {
+      params: { slotIndex },
+    })
     refetch()
   }
 
@@ -82,7 +84,7 @@ function DashboardContent({ pet }) {
             <VaccinationListCard petId={pet.id} vaccinations={dashboardData.schedules} onSaved={refetch} />
           </div>
 
-          <WeightGraphCard petId={pet.id} data={graphPoints} entries={weightEntries} />
+          <WeightGraphCard petId={pet.id} data={graphPoints} entries={weightEntries} onChanged={refetch} />
         </div>
 
         <div className="flex flex-col gap-6">
@@ -91,7 +93,7 @@ function DashboardContent({ pet }) {
             todayMedications={dashboardData.medicationsToday}
             onToggleToday={handleToggleMedication}
           />
-          <HealthNotesCard petName={pet.name} notes={pet.healthNotes} />
+          <HealthNotesCard petId={pet.id} petName={pet.name} notes={pet.healthNotes} />
         </div>
       </div>
     </PageLayout>

@@ -1,6 +1,6 @@
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.core.database import get_database
 from app.core.deps import get_current_user
 from app.models.pet import PetOut
@@ -15,6 +15,23 @@ async def get_my_profile(user_id: str = Depends(get_current_user)):
     if user_doc is None:
         raise HTTPException(status_code=404, detail="User not found")
     return UserOut.from_mongo(user_doc)
+
+class UserProfileUpdate(BaseModel):
+    age: int = Field(ge=0, le=120)
+
+# 카카오는 연령을 항상 제공하지 않아(선택 동의 항목) 마이펫이지에서 사용자가 직접
+# 입력/수정할 수 있게 한다 (docs/features/mypetsy.md "반려인 프로필").
+@router.patch("/me", response_model=UserOut)
+async def update_my_profile(body: UserProfileUpdate, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    doc = await db.users.find_one_and_update(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"age": body.age}},
+        return_document=True,
+    )
+    if doc is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return UserOut.from_mongo(doc)
 
 @router.get("/pets", response_model=list[PetOut])
 async def list_my_pets(user_id: str = Depends(get_current_user)):

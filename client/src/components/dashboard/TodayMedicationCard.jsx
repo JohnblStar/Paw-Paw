@@ -7,14 +7,15 @@ import MedicationEditModal from '@/components/dashboard/MedicationEditModal'
 export default function TodayMedicationCard({ petId, medications, onToggle, onSaved }) {
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [editingMedication, setEditingMedication] = useState(null)
-  const taken = medications.filter((med) => med.taken).length
+  const taken = medications.reduce((sum, med) => sum + med.takenSlots.filter(Boolean).length, 0)
+  const total = medications.reduce((sum, med) => sum + med.frequencyPerDay, 0)
 
   return (
     <Card
       title="오늘 복용한 약"
       action={
         <div className="flex items-center gap-2">
-          <MedRatioBadge taken={taken} total={medications.length} />
+          <MedRatioBadge taken={taken} total={total} />
           <button
             type="button"
             onClick={() => setIsWizardOpen(true)}
@@ -31,20 +32,24 @@ export default function TodayMedicationCard({ petId, medications, onToggle, onSa
         <ul className="flex flex-col gap-2">
           {medications.map((med) => (
             <li key={med.id} className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onToggle?.(med.id)}
-                className="flex flex-1 items-center justify-between text-sm"
-              >
-                <span className="text-ink">{med.name}</span>
-                <span className="flex items-center gap-2 text-ink-secondary">
-                  {med.alertTimes?.join(', ')}
-                  <span
-                    className={`inline-block h-2 w-2 rounded-full ${med.taken ? 'bg-primary-mint' : 'bg-coral/40'
-                      }`}
-                  />
-                </span>
-              </button>
+              <span className="flex-1 text-sm text-ink">{med.name}</span>
+              <span className="flex items-center gap-1.5">
+                {med.takenSlots.map((isTaken, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    title={med.alertTimes?.[index] ?? `${index + 1}회`}
+                    onClick={() => onToggle?.(med.id, index)}
+                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-colors ${
+                      isTaken
+                        ? 'bg-primary-mint text-ink'
+                        : 'border border-border bg-white text-ink-secondary hover:border-primary-mint-dark'
+                    }`}
+                  >
+                    {isTaken ? '✓' : index + 1}
+                  </button>
+                ))}
+              </span>
               <button
                 type="button"
                 onClick={() => setEditingMedication(med)}

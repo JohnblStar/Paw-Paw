@@ -15,6 +15,15 @@ router = APIRouter(prefix="/api/v1/pets", tags=["notifications"])
 SCHEDULE_DDAY_MILESTONES = {7, 1, 0}
 
 
+def _today_slots(med_doc: dict, today: date) -> list[bool]:
+    freq = med_doc["frequencyPerDay"]
+    for entry in med_doc.get("doseLog", []):
+        if entry["date"].date() == today:
+            slots = entry.get("slots", [])
+            return (list(slots) + [False] * freq)[:freq]
+    return [False] * freq
+
+
 async def _build_due_notifications(db, pet_id: ObjectId, today: date) -> list[NotificationOut]:
     notifications: list[NotificationOut] = []
     now_hhmm = datetime.now().strftime("%H:%M")
@@ -23,18 +32,25 @@ async def _build_due_notifications(db, pet_id: ObjectId, today: date) -> list[No
         alert_times = med.get("alertTimes", [])
         if not alert_times:
             continue
-        taken_today = today in {d.date() for d in med.get("completedDates", [])}
-        if taken_today or now_hhmm < min(alert_times):
-            continue
-        notifications.append(
-            NotificationOut(
-                id=f"medication:{med['_id']}:{today.isoformat()}",
-                type="medication",
-                title="복약 알림",
-                message=f"{med['title']} 먹을 시간이에요",
-                date=today,
+        slots = _today_slots(med, today)
+        # 알림시간은 frequencyPerDay 중 최대 3회분에만 매핑된다 — 나머지 복용 회차는
+        # 리마인드 시간이 없어 인앱 알림 대상이 아니다 (dashboard.md, alertTimes 최대 3개).
+        for i, alert_time in enumerate(alert_times):
+            if i >= len(slots) or slots[i] or now_hhmm < alert_time:
+                continue
+            notifications.append(
+                NotificationOut(
+                    id=f"medication:{med['_id']}:{today.isoformat()}:{i}",
+                    type="medication",
+                    title="복약 알림",
+                    message=(
+                        f"{med['title']} {alert_time} 복용 시간이에요"
+                        if len(alert_times) > 1
+                        else f"{med['title']} 먹을 시간이에요"
+                    ),
+                    date=today,
+                )
             )
-        )
 
     async for sched in db.schedules.find({"petId": pet_id}):
         dday = (sched["date"].date() - today).days

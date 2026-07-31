@@ -6,7 +6,7 @@ import { INPUT_CLASS } from '@/constants/formStyles'
 import { todayISO } from '@/utils/date'
 import { isValidWeight } from '@/utils/validation'
 
-export default function WeightLogModal({ isOpen, onClose, petId, entries }) {
+export default function WeightLogModal({ isOpen, onClose, petId, entries, onChanged }) {
   const { addWeightEntry, updateWeightEntry, deleteWeightEntry } = useWeight()
   const [editingId, setEditingId] = useState(null)
   const [date, setDate] = useState(todayISO())
@@ -42,6 +42,7 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries }) {
       await addWeightEntry(petId, { date, weight: Number(weight) })
     }
     resetForm()
+    onChanged?.()
   }
 
   const handleEditClick = (entry) => {
@@ -121,7 +122,11 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries }) {
               </button>
               <button
                 type="button"
-                onClick={() => deleteWeightEntry(petId, entry.id)}
+                onClick={() => {
+                  if (window.confirm('이 체중 기록을 삭제할까요?')) {
+                    deleteWeightEntry(petId, entry.id).then(() => onChanged?.())
+                  }
+                }}
                 className="text-xs text-coral hover:text-coral/80"
               >
                 삭제

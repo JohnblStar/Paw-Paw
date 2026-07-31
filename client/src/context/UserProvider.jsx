@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { UserContext } from '@/context/UserContext'
 import api from '@/api/instance'
 import { ENDPOINTS } from '@/api/endpoints'
@@ -16,7 +16,12 @@ export function UserProvider({ children }) {
     }
   }, [])
 
-  const value = useMemo(() => ({ user }), [user])
+  const updateAge = useCallback(async (age) => {
+    const updated = await api.patch(ENDPOINTS.USERS.ME, { age })
+    setUser(updated)
+  }, [])
+
+  const value = useMemo(() => ({ user, updateAge }), [user, updateAge])
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>
 }
