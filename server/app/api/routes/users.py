@@ -25,6 +25,9 @@ async def list_my_pets(user_id: str = Depends(get_current_user)):
     pets = []
     cursor = db.pets.find({"ownerId": ObjectId(user_id)})
     async for doc in cursor:
+        latest_weight = await db.weights.find_one({"petId": doc["_id"]}, sort=[("date", -1)])
+        if latest_weight is not None:
+            doc["weight"] = latest_weight["value"]
         pet = PetOut.from_mongo(doc)
         pet.isActive = doc["_id"] == active_pet_id
         pets.append(pet)

@@ -9,7 +9,7 @@ export default function HealthNotesCard({ petName, notes }) {
         <p className="text-sm text-ink-secondary">아직 기록된 특이사항이 없어요</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {notes.map((note, index) => (
+          {notes.slice(-5).reverse().map((note, index) => (
             <li key={`${note.date}-${index}`} className="flex items-start gap-2 text-sm">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary-purple" />
               <div>

@@ -242,6 +242,9 @@ async def get_dashboard(petId: str, user_id: str = Depends(get_current_user)):
         get_all_schedules(petId),
     )
 
+    latest_weight = await db.weights.find_one({"petId": ObjectId(petId)}, sort=[("date", -1)])
+    if latest_weight is not None:
+        pet_doc["weight"] = latest_weight["value"]
     return DashboardOut(
         pet=PetOut.from_mongo(pet_doc),
         weights=weights[-5:],
