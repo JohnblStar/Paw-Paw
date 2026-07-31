@@ -1,13 +1,15 @@
 import hashlib
 import re
 from calendar import monthrange
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from typing import Literal
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.database import get_database
 from app.core.deps import get_current_user
+from app.models.breed_guide import BreedGuideFeedback
 from app.models.report import (
     DiagnosisOpinion,
     HealthReportOut,
@@ -65,13 +67,18 @@ def _diff_clause(diff: float) -> str:
 
 
 def _build_analysis_message(
-    this_month_start: float | None, current: float | None, one_month_ago: float | None
+    period_start_value: float | None,
+    current: float | None,
+    period_before_value: float | None,
+    period: Literal["month", "week"],
 ) -> str:
+    start_label = "이번 주 시작" if period == "week" else "이번 달 시작"
+    before_label = "1주 전보다" if period == "week" else "한 달 전보다"
     clauses = []
-    if current is not None and this_month_start is not None:
-        clauses.append(f"이번 달 시작 대비 {_diff_clause(current - this_month_start)}")
-    if current is not None and one_month_ago is not None:
-        clauses.append(f"한 달 전보다 {_diff_clause(current - one_month_ago)}")
+    if current is not None and period_start_value is not None:
+        clauses.append(f"{start_label} 대비 {_diff_clause(current - period_start_value)}")
+    if current is not None and period_before_value is not None:
+        clauses.append(f"{before_label} {_diff_clause(current - period_before_value)}")
     if not clauses:
         return "체중 기록이 충분하지 않아 변화를 분석할 수 없어요."
     return ", ".join(clauses) + "."
@@ -216,6 +223,7 @@ async def get_monthly_report(
     petId: str,
     year: int = Query(...),
     month: int = Query(..., ge=1, le=12),
+    period: Literal["month", "week"] = Query("month"),
     user_id: str = Depends(get_current_user),
 ):
     db = get_database()
@@ -228,20 +236,28 @@ async def get_monthly_report(
     month_start = date(year, month, 1)
     month_end = date(year, month, last_day)
     reference_date = min(date.today(), month_end)
-    one_month_ago_date = _months_before(reference_date, 1)
+
+    # 주간 옵션은 표시 range(체중 비교 구간/증상 타임라인 필터)에만 영향을 준다.
+    # 종합소견/케어가이드는 원래 설계대로 항상 전체 기간을 참고해 생성하므로(기간 무관 캐싱) 여기서는 건드리지 않는다.
+    if period == "week":
+        period_start = reference_date - timedelta(days=6)
+        period_before_date = reference_date - timedelta(days=13)
+    else:
+        period_start = month_start
+        period_before_date = _months_before(reference_date, 1)
 
     weights = [doc async for doc in db.weights.find({"petId": pet_id}).sort("date", 1)]
-    this_month_start_value = _weight_at(weights, month_start)
+    period_start_value = _weight_at(weights, period_start)
     current_value = _weight_at(weights, reference_date)
-    one_month_ago_value = _weight_at(weights, one_month_ago_date)
+    period_before_value = _weight_at(weights, period_before_date)
 
     health_notes = pet_doc.get("healthNotes", [])
-    month_notes = sorted(
-        (n for n in health_notes if month_start <= n["date"].date() <= month_end),
+    period_notes = sorted(
+        (n for n in health_notes if period_start <= n["date"].date() <= reference_date),
         key=lambda n: n["date"],
     )
     monthly_symptom_frequency = [
-        SymptomFrequencyItem(date=n["date"].date().isoformat(), issue=n["note"]) for n in month_notes
+        SymptomFrequencyItem(date=n["date"].date().isoformat(), issue=n["note"]) for n in period_notes
     ]
 
     context_block = await _build_report_context(pet_doc)
@@ -273,15 +289,27 @@ async def get_monthly_report(
 
     diagnosis_opinions = [DiagnosisOpinion(id=i + 1, text=text) for i, text in enumerate(diagnosis_texts)]
 
+    breed_guide = None
+    if pet_doc.get("breed"):
+        breed_guide_doc = await db.breedGuides.find_one({"breed": pet_doc["breed"]})
+        if breed_guide_doc:
+            breed_guide = BreedGuideFeedback(
+                trainingTip=breed_guide_doc.get("trainingTip", ""),
+                chronicDiseases=breed_guide_doc.get("chronicDiseases", ""),
+                specialCare=breed_guide_doc.get("specialCare"),
+            )
+
     return HealthReportOut(
         petProfile=ReportPetProfile(
             name=pet_doc["name"], age=_age_years(pet_doc["birthDate"]), breed=pet_doc.get("breed")
         ),
+        period=period,
+        breedGuide=breed_guide,
         weightChange=WeightChange(
-            thisMonthStart=this_month_start_value,
+            thisMonthStart=period_start_value,
             current=current_value,
-            oneMonthAgo=one_month_ago_value,
-            analysisMessage=_build_analysis_message(this_month_start_value, current_value, one_month_ago_value),
+            oneMonthAgo=period_before_value,
+            analysisMessage=_build_analysis_message(period_start_value, current_value, period_before_value, period),
         ),
         monthlySymptomFrequency=monthly_symptom_frequency,
         diagnosisOpinions=diagnosis_opinions,

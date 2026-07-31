@@ -57,6 +57,7 @@ export default function PetFormPage() {
             initialValues={existingPet ?? DEFAULT_PET_FORM_VALUES}
             submitLabel={isEdit ? '수정 완료' : '등록하기'}
             onSubmit={handleSubmit}
+            petId={isEdit ? id : undefined}
           />
         </Card>
 

@@ -21,3 +21,10 @@ class ChatQueryResponse(BaseModel):
     detectedSymptom: DetectedSymptom | None
     suspectedSymptom: str | None
     registrationSuggestion: RegistrationSuggestion | None = None
+
+
+class ChatSummaryResponse(BaseModel):
+    summaryTitle: str
+    uploadedSymptoms: list[str]
+    suspectedSymptoms: list[str]
+    notice: str

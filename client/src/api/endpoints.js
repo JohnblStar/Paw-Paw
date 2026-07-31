@@ -22,8 +22,13 @@ export const ENDPOINTS = {
     SCHEDULES: (petId) => `/api/v1/pets/${petId}/schedules`,
     SCHEDULE_DETAIL: (petId, scheduleId) => `/api/v1/pets/${petId}/schedules/${scheduleId}`,
     REPORT_MONTHLY: (petId) => `/api/v1/pets/${petId}/report/monthly`,
+    AI_BREED: (petId) => `/api/v1/pets/${petId}/ai-breed`,
+    NOTIFICATIONS: (petId) => `/api/v1/pets/${petId}/notifications`,
+    NOTIFICATION_READ: (petId, notificationId) =>
+      `/api/v1/pets/${petId}/notifications/${encodeURIComponent(notificationId)}/read`,
   },
   CHAT: {
     QUERY: '/api/v1/chat/query',
+    SUMMARY: '/api/v1/chat/summary',
   },
 }

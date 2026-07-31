@@ -13,6 +13,9 @@ from typing import Literal
 from app.models.weight import WeightOut
 from app.models.medication import MedicationOut
 from app.models.schedule import ScheduleOut
+from app.models.breed_guide import BreedGuideOut
+from app.services import prompts
+from app.services.hai_gpt import HaiGptError, call_json
 
 router = APIRouter(prefix="/api/v1/pets", tags=["pets"])
 
@@ -437,3 +440,39 @@ async def delete_schedule(petId: str, scheduleId: str, user_id: str = Depends(ge
     result = await db.schedules.delete_one({"_id": ObjectId(scheduleId), "petId": ObjectId(petId)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Schedule not found")
+
+class BreedGuideRequest(BaseModel):
+    rawBreedInput: str = Field(min_length=1)
+
+@router.post("/{petId}/ai-breed", response_model=BreedGuideOut)
+async def generate_breed_guide(petId: str, body: BreedGuideRequest, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+
+    raw_input = body.rawBreedInput.strip()
+    cached = await db.breedGuides.find_one({"$or": [{"breed": raw_input}, {"rawInputAliases": raw_input}]})
+    if cached:
+        return BreedGuideOut.from_mongo(cached)
+
+    try:
+        result = await call_json(prompts.BREED_GUIDE_SYSTEM_PROMPT, raw_input, max_tokens=400)
+    except HaiGptError:
+        raise HTTPException(
+            status_code=503, detail="AI 품종 정보 생성이 일시적으로 제한됩니다. 잠시 후 다시 시도해 주세요."
+        )
+
+    breed = (result.get("breed") or raw_input).strip()
+    doc = await db.breedGuides.find_one_and_update(
+        {"breed": breed},
+        {
+            "$set": {
+                "trainingTip": result.get("trainingTip", ""),
+                "chronicDiseases": result.get("chronicDiseases", ""),
+                "specialCare": result.get("specialCare"),
+            },
+            "$addToSet": {"rawInputAliases": raw_input},
+        },
+        upsert=True,
+        return_document=True,
+    )
+    return BreedGuideOut.from_mongo(doc)

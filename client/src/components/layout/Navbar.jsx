@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { usePet } from '@/context/usePet'
 import { useUser } from '@/context/useUser'
 import { useAuth } from '@/hooks/useAuth'
+import NotificationBell from '@/components/layout/NotificationBell'
 
 const NAV_ITEMS = [
   { to: '/main', label: '메인페이지' },
@@ -47,6 +48,7 @@ export default function Navbar() {
         </nav>
 
         <div className="flex flex-wrap items-center gap-3 text-sm text-ink">
+          <NotificationBell />
           <span className="whitespace-nowrap font-medium">{user?.name}</span>
           <span className="whitespace-nowrap text-ink-secondary">
             {activePet ? `· ${activePet.name} 보호자` : ''}

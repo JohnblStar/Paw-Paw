@@ -3,6 +3,7 @@ import PageLayout from '@/components/layout/PageLayout'
 import Card from '@/components/common/Card'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
 import RegistrationWizardModal from '@/components/chatbot/RegistrationWizardModal'
+import ChatSummaryModal from '@/components/chatbot/ChatSummaryModal'
 import MarkdownText from '@/components/common/MarkdownText'
 import { usePet } from '@/context/usePet'
 import api from '@/api/instance'
@@ -24,6 +25,7 @@ export default function ChatbotPage() {
   const [input, setInput] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [wizardType, setWizardType] = useState(null)
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false)
   const scrollBoxRef = useRef(null)
 
   useEffect(() => {
@@ -97,7 +99,14 @@ export default function ChatbotPage() {
                 )}
                 {message.detectedSymptom && (
                   <p className="mt-2 text-xs text-primary-purple">
-                    {activePet.name}의 건강 기록에 저장됐어요: {message.detectedSymptom.description}
+                    {activePet.name}의 건강 기록에 저장됐어요: {message.detectedSymptom.description}{' '}
+                    <button
+                      type="button"
+                      onClick={() => setIsSummaryOpen(true)}
+                      className="underline-offset-2 hover:underline"
+                    >
+                      요약 완료
+                    </button>
                   </p>
                 )}
                 {message.registrationSuggestion && (
@@ -143,6 +152,8 @@ export default function ChatbotPage() {
           setMessages((prev) => [...prev, { role: 'assistant', text: '등록됐어요! 대시보드에서 확인해보세요.' }])
         }}
       />
+
+      <ChatSummaryModal isOpen={isSummaryOpen} onClose={() => setIsSummaryOpen(false)} />
     </PageLayout>
   )
 }
