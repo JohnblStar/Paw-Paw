@@ -44,14 +44,9 @@ export default function WeightLineChart({ points }) {
       {coords.map((c, index) => {
         const prev = coords[index - 1]
         const next = coords[index + 1]
-        const isPeak = prev && next
-          ? c.point.weight > prev.point.weight && c.point.weight > next.point.weight
-          : !prev && next
-            ? c.point.weight > next.point.weight
-            : !next && prev
-              ? c.point.weight > prev.point.weight
-              : true
-        const labelY = isPeak ? c.y - 10 : Math.min(c.y + 16, VIEW_HEIGHT - 20)
+        const isAbove =
+          (!prev || prev.point.weight < c.point.weight) && (!next || next.point.weight <= c.point.weight)
+        const labelY = isAbove ? c.y - 10 : Math.min(c.y + 16, VIEW_HEIGHT - 20)
 
         return (
           <g key={c.point.date}>

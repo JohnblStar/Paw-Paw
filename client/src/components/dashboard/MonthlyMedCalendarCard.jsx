@@ -2,13 +2,12 @@ import { useMemo, useState } from 'react'
 import Card from '@/components/common/Card'
 import Modal from '@/components/common/Modal'
 import { buildMonthGrid } from '@/utils/calendarGrid'
-import { todayISO } from '@/utils/date'
+import { todayISO, shiftMonth } from '@/utils/date'
 
 const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일']
 
-export default function MonthlyMedCalendarCard({ monthData, todayMedications, onToggleToday }) {
+export default function MonthlyMedCalendarCard({ viewMonth, onMonthChange, monthData, todayMedications, onToggleToday }) {
   const todayStr = todayISO()
-  const today = new Date()
 
   const [selectedDate, setSelectedDate] = useState(null)
 
@@ -20,8 +19,7 @@ export default function MonthlyMedCalendarCard({ monthData, todayMedications, on
     return map
   }, [monthData])
 
-  const year = today.getFullYear()
-  const month = today.getMonth() + 1
+  const [year, month] = viewMonth.split('-').map(Number)
 
   const weeks = useMemo(() => buildMonthGrid(year, month, dataByDate), [year, month, dataByDate])
 
@@ -35,6 +33,28 @@ export default function MonthlyMedCalendarCard({ monthData, todayMedications, on
 
   return (
     <Card title="월간 복약 캘린더">
+      <div className="mb-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => onMonthChange(shiftMonth(viewMonth, -1))}
+          aria-label="이전 달"
+          className="rounded-full px-2 py-1 text-2xl font-bold text-ink-secondary transition-colors hover:text-ink"
+        >
+          ‹
+        </button>
+        <span className="text-sm font-semibold text-ink">
+          {year}년 {month}월
+        </span>
+        <button
+          type="button"
+          onClick={() => onMonthChange(shiftMonth(viewMonth, 1))}
+          aria-label="다음 달"
+          className="rounded-full px-2 py-1 text-2xl font-bold text-ink-secondary transition-colors hover:text-ink"
+        >
+          ›
+        </button>
+      </div>
+
       <div className="grid grid-cols-7 gap-1.5 text-center">
         {DAY_LABELS.map((label) => (
           <span key={label} className="text-xs text-ink-secondary">

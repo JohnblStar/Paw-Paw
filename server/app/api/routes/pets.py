@@ -48,7 +48,8 @@ async def get_monthly_weights(
     entries = {doc["date"].date(): doc["value"] async for doc in cursor}
 
     today = date.today()
-    last_value = None
+    prior_dates = [d for d in entries if d < month_start]
+    last_value = entries[max(prior_dates)] if prior_dates else None
     result = []
     for offset in range(last_day):
         day = month_start + timedelta(days=offset)
@@ -237,20 +238,33 @@ async def get_dashboard(petId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
     pet_doc = await _get_owned_pet(db, petId, user_id)
 
-    current_month = date.today().strftime("%Y-%m")
-    weights, medications_today, upcoming_schedule, schedules = await asyncio.gather(
-        get_monthly_weights(petId, current_month, user_id),
+    today = date.today()
+    window_start = today - timedelta(days=4)
+    medications_today, upcoming_schedule, schedules = await asyncio.gather(
         get_today_medications(petId, user_id),
         get_upcoming_schedule_dday(petId),
         get_all_schedules(petId),
     )
+
+    cursor = db.weights.find(
+        {"petId": ObjectId(petId), "date": {"$lte": _to_datetime(today)}}
+    ).sort("date", 1)
+    entries = {doc["date"].date(): doc["value"] async for doc in cursor}
+    prior_dates = [d for d in entries if d < window_start]
+    last_value = entries[max(prior_dates)] if prior_dates else None
+    weights = []
+    for offset in range(5):
+        day = window_start + timedelta(days=offset)
+        if day in entries:
+            last_value = entries[day]
+        weights.append(DailyWeight(date=day, weight=last_value))
 
     latest_weight = await db.weights.find_one({"petId": ObjectId(petId)}, sort=[("date", -1)])
     if latest_weight is not None:
         pet_doc["weight"] = latest_weight["value"]
     return DashboardOut(
         pet=PetOut.from_mongo(pet_doc),
-        weights=weights[-5:],
+        weights=weights,
         medicationsToday=medications_today,
         upcomingSchedule=upcoming_schedule,
         schedules=schedules,
