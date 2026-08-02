@@ -1,7 +1,9 @@
+import { createPortal } from 'react-dom'
+
 export default function Modal({ isOpen, onClose, title, children }) {
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
       onClick={onClose}
@@ -23,6 +25,7 @@ export default function Modal({ isOpen, onClose, title, children }) {
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

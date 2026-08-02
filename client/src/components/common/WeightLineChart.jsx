@@ -1,6 +1,6 @@
 const VIEW_WIDTH = 560
 const VIEW_HEIGHT = 200
-const PADDING = { top: 24, right: 16, bottom: 24, left: 32 }
+const PADDING = { top: 24, right: 16, bottom: 45, left: 32 }
 
 export default function WeightLineChart({ points }) {
   if (!points || points.length === 0) {
@@ -44,8 +44,10 @@ export default function WeightLineChart({ points }) {
       {coords.map((c, index) => {
         const prev = coords[index - 1]
         const next = coords[index + 1]
-        const isValley = prev && next && c.y > prev.y && c.y > next.y
-        const labelY = isValley ? c.y - 20 : c.y - 10
+        const isAbove =
+          (!prev || prev.point.weight < c.point.weight) && (!next || next.point.weight <= c.point.weight)
+        const labelY = isAbove ? c.y - 10 : Math.min(c.y + 16, VIEW_HEIGHT - 20)
+
         return (
           <g key={c.point.date}>
             <circle cx={c.x} cy={c.y} r="4" fill="var(--color-primary-mint-dark)" />

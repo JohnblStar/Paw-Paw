@@ -13,12 +13,12 @@ import api from '@/api/instance'
 import { ENDPOINTS } from '@/api/endpoints'
 import { todayISO } from '@/utils/date'
 
-async function loadDashboardData(petId) {
-  const [dashboard, monthCalendar] = await Promise.all([
-    api.get(ENDPOINTS.PETS.DASHBOARD(petId)),
-    api.get(ENDPOINTS.PETS.MEDICATIONS_CALENDAR(petId), { params: { month: todayISO().slice(0, 7) } }),
-  ])
-  return { dashboard, monthCalendar }
+async function loadDashboard(petId) {
+  return api.get(ENDPOINTS.PETS.DASHBOARD(petId))
+}
+
+async function loadMonthCalendar(petId, month) {
+  return api.get(ENDPOINTS.PETS.MEDICATIONS_CALENDAR(petId), { params: { month } })
 }
 
 // pet.id로 키를 주어, 활성 반려동물이 바뀌면 이전 반려동물의 대시보드 state를 이어받지 않고
@@ -27,18 +27,27 @@ function DashboardContent({ pet }) {
   const { weightEntriesByPetId, ensureWeightEntries } = useWeight()
   const [dashboardData, setDashboardData] = useState(null)
   const [monthCalendar, setMonthCalendar] = useState([])
+  const [viewMonth, setViewMonth] = useState(() => todayISO().slice(0, 7))
 
   useEffect(() => {
     let ignore = false
-    loadDashboardData(pet.id).then((result) => {
-      if (ignore) return
-      setDashboardData(result.dashboard)
-      setMonthCalendar(result.monthCalendar)
+    loadDashboard(pet.id).then((data) => {
+      if (!ignore) setDashboardData(data)
     })
     return () => {
       ignore = true
     }
   }, [pet.id])
+
+  useEffect(() => {
+    let ignore = false
+    loadMonthCalendar(pet.id, viewMonth).then((data) => {
+      if (!ignore) setMonthCalendar(data)
+    })
+    return () => {
+      ignore = true
+    }
+  }, [pet.id, viewMonth])
 
   useEffect(() => {
     ensureWeightEntries(pet.id)
@@ -56,9 +65,9 @@ function DashboardContent({ pet }) {
   const graphPoints = dashboardData.weights.filter((point) => point.weight !== null)
 
   const refetch = async () => {
-    const result = await loadDashboardData(pet.id)
-    setDashboardData(result.dashboard)
-    setMonthCalendar(result.monthCalendar)
+    const [dashboard, calendar] = await Promise.all([loadDashboard(pet.id), loadMonthCalendar(pet.id, viewMonth)])
+    setDashboardData(dashboard)
+    setMonthCalendar(calendar)
   }
 
   const handleToggleMedication = async (medicationId, slotIndex) => {
@@ -89,6 +98,8 @@ function DashboardContent({ pet }) {
 
         <div className="flex flex-col gap-6">
           <MonthlyMedCalendarCard
+            viewMonth={viewMonth}
+            onMonthChange={setViewMonth}
             monthData={monthCalendar}
             todayMedications={dashboardData.medicationsToday}
             onToggleToday={handleToggleMedication}

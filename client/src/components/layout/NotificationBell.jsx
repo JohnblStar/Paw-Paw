@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import Modal from '@/components/common/Modal'
+import { useEffect, useRef, useState } from 'react'
 import { usePet } from '@/context/usePet'
 import api from '@/api/instance'
 import { ENDPOINTS } from '@/api/endpoints'
@@ -10,6 +9,7 @@ export default function NotificationBell() {
   const { activePet } = usePet()
   const [notifications, setNotifications] = useState([])
   const [isPanelOpen, setIsPanelOpen] = useState(false)
+  const containerRef = useRef(null)
 
   useEffect(() => {
     if (!activePet) return
@@ -32,6 +32,17 @@ export default function NotificationBell() {
     }
   }, [activePet])
 
+  useEffect(() => {
+    if (!isPanelOpen) return
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsPanelOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isPanelOpen])
+
   if (!activePet) return null
 
   const handleRead = async (notificationId) => {
@@ -44,10 +55,10 @@ export default function NotificationBell() {
   }
 
   return (
-    <>
+    <div ref={containerRef} className="relative">
       <button
         type="button"
-        onClick={() => setIsPanelOpen(true)}
+        onClick={() => setIsPanelOpen((prev) => !prev)}
         className="relative rounded-full p-2 text-ink-secondary transition-colors hover:text-ink"
         aria-label="알림"
       >
@@ -62,32 +73,45 @@ export default function NotificationBell() {
         )}
       </button>
 
-      <Modal isOpen={isPanelOpen} onClose={() => setIsPanelOpen(false)} title="알림">
-        {notifications.length === 0 ? (
-          <p className="text-sm text-ink-secondary">새 알림이 없어요</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {notifications.map((notification) => (
-              <li
-                key={notification.id}
-                className="flex items-start justify-between gap-3 rounded-xl border border-border px-3 py-2.5"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-ink">{notification.title}</p>
-                  <p className="text-xs text-ink-secondary">{notification.message}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleRead(notification.id)}
-                  className="shrink-0 text-xs text-ink-secondary underline-offset-2 hover:underline"
+      {isPanelOpen && (
+        <div className="absolute right-0 top-full z-50 mt-2 max-h-[70vh] w-80 overflow-y-auto rounded-2xl border border-border bg-white p-4 shadow-lg">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-ink">알림</h2>
+            <button
+              type="button"
+              onClick={() => setIsPanelOpen(false)}
+              aria-label="닫기"
+              className="text-ink-secondary transition-colors hover:text-ink"
+            >
+              ×
+            </button>
+          </div>
+          {notifications.length === 0 ? (
+            <p className="text-sm text-ink-secondary">새 알림이 없어요</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {notifications.map((notification) => (
+                <li
+                  key={notification.id}
+                  className="flex items-start justify-between gap-3 rounded-xl border border-border px-3 py-2.5"
                 >
-                  읽음
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Modal>
-    </>
+                  <div>
+                    <p className="text-sm font-semibold text-ink">{notification.title}</p>
+                    <p className="text-xs text-ink-secondary">{notification.message}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRead(notification.id)}
+                    className="shrink-0 text-xs text-ink-secondary underline-offset-2 hover:underline"
+                  >
+                    읽음
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
