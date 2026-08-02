@@ -28,6 +28,14 @@ async def _get_owned_pet(db, petId: str, user_id: str) -> dict:
         raise HTTPException(status_code=404, detail="Pet not found")
     return pet
 
+def _today_slots(med_doc: dict, today: date) -> list[bool]:
+    freq = med_doc["frequencyPerDay"]
+    for entry in med_doc.get("doseLog", []):
+        if entry["date"].date() == today:
+            slots = entry.get("slots", [])
+            return (list(slots) + [False] * freq)[:freq]
+    return [False] * freq
+
 class DailyWeight(BaseModel):
     date: date
     weight: float | None
@@ -63,6 +71,8 @@ class MedicationToday(BaseModel):
     id: str
     name: str
     alertTimes: list[str] = []
+    frequencyPerDay: int
+    takenSlots: list[bool]
     taken: bool
 
 @router.get("/{petId}/medications/today", response_model=list[MedicationToday])
@@ -71,15 +81,20 @@ async def get_today_medications(petId: str, user_id: str = Depends(get_current_u
     await _get_owned_pet(db, petId, user_id)
     today = date.today()
     cursor = db.medications.find({"petId": ObjectId(petId)})
-    return [
-        MedicationToday(
-            id=str(doc["_id"]),
-            name=doc["title"],
-            alertTimes=doc.get("alertTimes", []),
-            taken=today in {d.date() for d in doc.get("completedDates", [])},
+    result = []
+    async for doc in cursor:
+        slots = _today_slots(doc, today)
+        result.append(
+            MedicationToday(
+                id=str(doc["_id"]),
+                name=doc["title"],
+                alertTimes=doc.get("alertTimes", []),
+                frequencyPerDay=doc["frequencyPerDay"],
+                takenSlots=slots,
+                taken=all(slots) if slots else False,
+            )
         )
-        async for doc in cursor
-    ]
+    return result
 
 class DayMedicationSummary(BaseModel):
     date: date
@@ -92,46 +107,68 @@ async def get_medications_calendar(
 ):
     year, mon = (int(part) for part in month.split("-"))
     _, last_day = monthrange(year, mon)
+    month_start = date(year, mon, 1)
 
     db = get_database()
     await _get_owned_pet(db, petId, user_id)
     medications = [doc async for doc in db.medications.find({"petId": ObjectId(petId)})]
-    total = len(medications)
+    total = sum(med["frequencyPerDay"] for med in medications)
 
-    completed_counts = defaultdict(int)
+    taken_counts = defaultdict(int)
     for med in medications:
-        for completed_date in med.get("completedDates", []):
-            if completed_date.year == year and completed_date.month == mon:
-                completed_counts[completed_date.day] += 1
+        for entry in med.get("doseLog", []):
+            entry_date = entry["date"].date()
+            if entry_date.year == year and entry_date.month == mon:
+                taken_counts[entry_date.day] += sum(1 for slot in entry.get("slots", []) if slot)
 
-    return [
-        DayMedicationSummary(date=date(year, mon, day), taken=completed_counts[day], total=total)
-        for day in range(1, last_day + 1)
-    ]
+    today = date.today()
+    result = []
+    for offset in range(last_day):
+        day = month_start + timedelta(days=offset)
+        if day > today:
+            break
+        result.append(DayMedicationSummary(date=day, taken=taken_counts[day.day], total=total))
+    return result
 
 @router.patch("/{petId}/medications/{medicationId}/check", response_model=MedicationToday)
-async def toggle_medication_check(petId: str, medicationId: str, user_id: str = Depends(get_current_user)):
+async def toggle_medication_check(
+    petId: str, medicationId: str, slotIndex: int = Query(..., ge=0), user_id: str = Depends(get_current_user)
+):
     db = get_database()
     await _get_owned_pet(db, petId, user_id)
-    today_dt = _to_datetime(date.today())
     medications = db.medications
+    today = date.today()
+    today_dt = _to_datetime(today)
 
-    pulled = await medications.update_one(
-        {"_id": ObjectId(medicationId), "petId": ObjectId(petId)},
-        {"$pull": {"completedDates": today_dt}},
-    )
-    if pulled.modified_count:
-        taken = False
+    doc = await medications.find_one({"_id": ObjectId(medicationId), "petId": ObjectId(petId)})
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Medication not found")
+    freq = doc["frequencyPerDay"]
+    if slotIndex >= freq:
+        raise HTTPException(status_code=400, detail="유효하지 않은 복약 회차입니다")
+
+    slots = _today_slots(doc, today)
+    slots[slotIndex] = not slots[slotIndex]
+    has_today_entry = any(entry["date"].date() == today for entry in doc.get("doseLog", []))
+
+    if has_today_entry:
+        await medications.update_one(
+            {"_id": ObjectId(medicationId), "petId": ObjectId(petId), "doseLog.date": today_dt},
+            {"$set": {"doseLog.$.slots": slots}},
+        )
     else:
         await medications.update_one(
             {"_id": ObjectId(medicationId), "petId": ObjectId(petId)},
-            {"$addToSet": {"completedDates": today_dt}},
+            {"$push": {"doseLog": {"date": today_dt, "slots": slots}}},
         )
-        taken = True
 
-    doc = await medications.find_one({"_id": ObjectId(medicationId)})
     return MedicationToday(
-        id=str(doc["_id"]), name=doc["title"], alertTimes=doc.get("alertTimes", []), taken=taken
+        id=str(doc["_id"]),
+        name=doc["title"],
+        alertTimes=doc.get("alertTimes", []),
+        frequencyPerDay=freq,
+        takenSlots=slots,
+        taken=all(slots),
     )
 
 ALERT_TIME_PATTERN = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -172,7 +209,7 @@ async def create_medication(petId: str, body: MedicationCreate, user_id: str = D
         "title": body.title,
         "frequencyPerDay": body.frequencyPerDay,
         "alertTimes": body.alertTimes,
-        "completedDates": [],
+        "doseLog": [],
     }
     result = await db.medications.insert_one(doc)
     doc["_id"] = result.inserted_id
@@ -250,7 +287,7 @@ async def get_dashboard(petId: str, user_id: str = Depends(get_current_user)):
         pet_doc["weight"] = latest_weight["value"]
     return DashboardOut(
         pet=PetOut.from_mongo(pet_doc),
-        weights=weights[-5:],
+        weights=weights,
         medicationsToday=medications_today,
         upcomingSchedule=upcoming_schedule,
         schedules=schedules,
@@ -315,6 +352,39 @@ async def update_pet(petId: str, body: PetCreate, user_id: str = Depends(get_cur
     )
     if doc is None:
         raise HTTPException(status_code=404, detail="Pet not found")
+    return PetOut.from_mongo(doc)
+
+class HealthNoteUpdate(BaseModel):
+    bodyPart: str = Field(min_length=1)
+    note: str = Field(min_length=1)
+
+@router.patch("/{petId}/health-notes/{noteId}", response_model=PetOut)
+async def update_health_note(
+    petId: str, noteId: str, body: HealthNoteUpdate, user_id: str = Depends(get_current_user)
+):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+
+    result = await db.pets.update_one(
+        {"_id": ObjectId(petId), "healthNotes.id": noteId},
+        {"$set": {"healthNotes.$.bodyPart": body.bodyPart, "healthNotes.$.note": body.note}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Health note not found")
+
+    doc = await db.pets.find_one({"_id": ObjectId(petId)})
+    return PetOut.from_mongo(doc)
+
+@router.delete("/{petId}/health-notes/{noteId}", response_model=PetOut)
+async def delete_health_note(petId: str, noteId: str, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    await _get_owned_pet(db, petId, user_id)
+
+    await db.pets.update_one(
+        {"_id": ObjectId(petId)},
+        {"$pull": {"healthNotes": {"id": noteId}}},
+    )
+    doc = await db.pets.find_one({"_id": ObjectId(petId)})
     return PetOut.from_mongo(doc)
 
 @router.delete("/{petId}", status_code=204)

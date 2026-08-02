@@ -1,6 +1,28 @@
 """챗봇/건강 레포트 시스템 프롬프트. scripts/prompt-test/prompts.py에서 HAI-GPT로 검증 완료된
 원문을 그대로 옮긴 프로덕션 버전이다. 수정 시 scripts/prompt-test로 먼저 재검증할 것."""
 
+import re
+
+# SPEC.md 6.4 — 출처 표기는 이 3종 고정 라벨만 허용한다 (구체적인 문서/논문명 fabrication 방지).
+ALLOWED_SOURCE_LABELS = {"일반 수의학 상식", "품종별 유전질환 정보", "등록된 데이터 기반 추정"}
+_SOURCE_TAG_RE = re.compile(r"\[출처\s*:\s*([^\]]+)\]")
+
+
+def sanitize_source_labels(text: str | None) -> str | None:
+    """LLM 출력에서 [출처: ...] 표기가 고정 라벨 3종 중 하나가 아니면 안전한 기본 라벨로 치환한다.
+    프롬프트 지시만으로는 모델이 실존하지 않는 문헌명을 지어낼 가능성을 배제할 수 없어 서버측에서
+    한 번 더 필터링한다."""
+    if not text:
+        return text
+
+    def _replace(match: re.Match) -> str:
+        label = match.group(1).strip()
+        if label in ALLOWED_SOURCE_LABELS:
+            return match.group(0)
+        return "[출처: 등록된 데이터 기반 추정]"
+
+    return _SOURCE_TAG_RE.sub(_replace, text)
+
 CONSULT_SYSTEM_PROMPT = """당신은 반려동물 건강 상담 챗봇 "Paw:Paw AI"입니다. 반려동물 보호자의 자유로운 건강 질문에 답합니다.
 
 [역할과 태도]

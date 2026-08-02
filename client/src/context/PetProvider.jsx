@@ -33,6 +33,12 @@ export function PetProvider({ children }) {
     setPets((prev) => prev.map((pet) => (pet.id === id ? updated : pet)))
   }, [])
 
+  // health-notes 수정/삭제처럼 서버가 이미 최신 PetOut을 응답으로 돌려주는 엔드포인트가
+  // 로컬 pets 캐시를 다시 API 호출 없이 즉시 반영할 때 쓴다.
+  const applyPetUpdate = useCallback((updatedPet) => {
+    setPets((prev) => prev.map((pet) => (pet.id === updatedPet.id ? updatedPet : pet)))
+  }, [])
+
   const deletePet = useCallback(
     async (id) => {
       await api.delete(ENDPOINTS.PETS.DELETE(id))
@@ -52,8 +58,18 @@ export function PetProvider({ children }) {
 
   const value = useMemo(() => {
     const activePet = pets.find((pet) => pet.id === activePetId) ?? null
-    return { pets, activePet, activePetId, isLoading, callPet, addPet, updatePet, deletePet }
-  }, [pets, activePetId, isLoading, callPet, addPet, updatePet, deletePet])
+    return {
+      pets,
+      activePet,
+      activePetId,
+      isLoading,
+      callPet,
+      addPet,
+      updatePet,
+      applyPetUpdate,
+      deletePet,
+    }
+  }, [pets, activePetId, isLoading, callPet, addPet, updatePet, applyPetUpdate, deletePet])
 
   return <PetContext.Provider value={value}>{children}</PetContext.Provider>
 }

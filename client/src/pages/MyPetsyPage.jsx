@@ -3,6 +3,7 @@ import PageLayout from '@/components/layout/PageLayout'
 import Card from '@/components/common/Card'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
 import PetCard from '@/components/mypetsy/PetCard'
+import OwnerProfileCard from '@/components/mypetsy/OwnerProfileCard'
 import { usePet } from '@/context/usePet'
 import { useUser } from '@/context/useUser'
 
@@ -20,6 +21,8 @@ export default function MyPetsyPage() {
 
   return (
     <PageLayout>
+      <OwnerProfileCard user={user} />
+
       <h1 className="mb-1 text-xl font-bold text-ink">{user?.name}님의 반려동물</h1>
       <p className="mb-6 text-sm text-ink-secondary">등록된 반려동물을 관리하고 전환할 수 있어요</p>
 

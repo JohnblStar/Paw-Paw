@@ -17,12 +17,13 @@ async function loadMainPageData(petId) {
     api.get(ENDPOINTS.PETS.MEDICATIONS_CALENDAR(petId), { params: { month: todayISO().slice(0, 7) } }),
   ])
   const weekDates = getWeekDates()
+  const totalDoses = dashboard.medicationsToday.reduce((sum, med) => sum + med.frequencyPerDay, 0)
   const weekCalendar = weekDates.map(
     (date) =>
       calendar.find((entry) => entry.date === date) ?? {
         date,
         taken: 0,
-        total: dashboard.medicationsToday.length,
+        total: totalDoses,
       },
   )
   return { dashboard, weekCalendar }

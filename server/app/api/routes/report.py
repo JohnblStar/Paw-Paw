@@ -274,6 +274,7 @@ async def get_monthly_report(
             report_text = FALLBACK_REPORT_TEXT
             diagnosis_texts = []
         else:
+            report_text = prompts.sanitize_source_labels(report_text)
             diagnosis_texts = _extract_diagnosis_opinions(report_text)
             await db.reports.update_one(
                 {"petId": pet_id, "year": year, "month": month},

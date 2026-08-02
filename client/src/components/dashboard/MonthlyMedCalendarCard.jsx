@@ -80,24 +80,28 @@ export default function MonthlyMedCalendarCard({ monthData, todayMedications, on
               <p className="text-sm text-ink-secondary">등록된 약이 없어요</p>
             ) : (
               todayMedications.map((med) => (
-                <li key={med.id}>
-                  <button
-                    type="button"
-                    onClick={() => onToggleToday(med.id)}
-                    className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"
-                  >
-                    <span className="text-ink">
-                      {med.name}
-                      <span className="ml-2 text-xs text-ink-secondary">{med.alertTimes?.join(', ')}</span>
-                    </span>
-                    <span
-                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                        med.taken ? 'bg-primary-mint text-ink' : 'bg-bg border border-border text-muted'
-                      }`}
-                    >
-                      {med.taken ? '✓' : ''}
-                    </span>
-                  </button>
+                <li
+                  key={med.id}
+                  className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"
+                >
+                  <span className="text-ink">{med.name}</span>
+                  <span className="flex items-center gap-1.5">
+                    {med.takenSlots.map((isTaken, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        title={med.alertTimes?.[index] ?? `${index + 1}회`}
+                        onClick={() => onToggleToday(med.id, index)}
+                        className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                          isTaken
+                            ? 'bg-primary-mint text-ink'
+                            : 'bg-bg border border-border text-muted'
+                        }`}
+                      >
+                        {isTaken ? '✓' : ''}
+                      </button>
+                    ))}
+                  </span>
                 </li>
               ))
             )}

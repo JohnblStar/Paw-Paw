@@ -1,4 +1,6 @@
-from datetime import date, datetime, timezone
+import hashlib
+import re
+from datetime import date, datetime, timedelta, timezone
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
@@ -48,6 +50,16 @@ def _detect_registration_intent(text: str) -> RegistrationSuggestion | None:
 
 def _to_datetime(d: date) -> datetime:
     return datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+
+
+# 반복 질문 캐싱 — 동일 질문 재입력 시 LLM을 다시 호출하지 않는다 (SPEC.md §7.9, 토큰 절약 원칙).
+# TTL을 짧게 두는 이유: 컨텍스트(체중/복약 등)가 시간에 따라 바뀔 수 있어 오래 캐싱하면
+# 답변이 최신 상태를 반영하지 못할 수 있다.
+CHAT_CACHE_TTL_SECONDS = 600
+
+
+def _normalize_question(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip())
 
 
 def _age_years(birth_date: date) -> int:
@@ -121,19 +133,38 @@ async def chat_query(body: ChatQueryRequest, user_id: str = Depends(get_current_
     if pet_doc is None:
         raise HTTPException(status_code=404, detail="Pet not found")
 
-    context_block = await _build_context_block(pet_doc)
-    system_prompt = prompts.CONSULT_SYSTEM_PROMPT + "\n\n" + context_block
     registration_suggestion = _detect_registration_intent(body.message)
 
-    try:
-        result = await call_json(system_prompt, body.message)
-    except HaiGptError:
-        return ChatQueryResponse(
-            reply="AI 상담이 일시적으로 제한됩니다. 잠시 후 다시 시도해 주세요.",
-            isSymptomDetected=False,
-            detectedSymptom=None,
-            suspectedSymptom=None,
-            registrationSuggestion=registration_suggestion,
+    normalized_question = _normalize_question(body.message)
+    cache_key = hashlib.sha256(f"{active_pet_id}:{normalized_question}".encode("utf-8")).hexdigest()
+    cached_entry = await db.chatCache.find_one({"_id": cache_key})
+
+    if cached_entry:
+        result = cached_entry["result"]
+    else:
+        context_block = await _build_context_block(pet_doc)
+        system_prompt = prompts.CONSULT_SYSTEM_PROMPT + "\n\n" + context_block
+        try:
+            result = await call_json(system_prompt, body.message)
+        except HaiGptError:
+            return ChatQueryResponse(
+                reply="AI 상담이 일시적으로 제한됩니다. 잠시 후 다시 시도해 주세요.",
+                isSymptomDetected=False,
+                detectedSymptom=None,
+                suspectedSymptom=None,
+                registrationSuggestion=registration_suggestion,
+            )
+        result["answerText"] = prompts.sanitize_source_labels(result.get("answerText", ""))
+        result["suspectedSymptom"] = prompts.sanitize_source_labels(result.get("suspectedSymptom"))
+        await db.chatCache.update_one(
+            {"_id": cache_key},
+            {
+                "$set": {
+                    "result": result,
+                    "expiresAt": datetime.now(timezone.utc) + timedelta(seconds=CHAT_CACHE_TTL_SECONDS),
+                }
+            },
+            upsert=True,
         )
 
     is_detected = bool(result.get("isSymptomDetected"))
@@ -141,19 +172,22 @@ async def chat_query(body: ChatQueryRequest, user_id: str = Depends(get_current_
     suspected_symptom = result.get("suspectedSymptom")
 
     detected_symptom = None
+    # 캐시로 재사용된 응답은 이전 호출 때 이미 healthNotes에 기록되어 있으므로 중복 push하지 않는다.
     if is_detected and symptom_summary:
         area = _extract_area(symptom_summary)
         detected_symptom = DetectedSymptom(area=area, description=symptom_summary)
 
-        await db.pets.update_one(
-            {"_id": pet_doc["_id"]},
-            {"$push": {"healthNotes": {
-                "date": _to_datetime(date.today()),
-                "bodyPart": area or "기타",
-                "note": symptom_summary,
-                "suspectedSymptom": suspected_symptom,
-            }}},
-        )
+        if not cached_entry:
+            await db.pets.update_one(
+                {"_id": pet_doc["_id"]},
+                {"$push": {"healthNotes": {
+                    "id": str(ObjectId()),
+                    "date": _to_datetime(date.today()),
+                    "bodyPart": area or "기타",
+                    "note": symptom_summary,
+                    "suspectedSymptom": suspected_symptom,
+                }}},
+            )
 
     return ChatQueryResponse(
         reply=result.get("answerText", ""),

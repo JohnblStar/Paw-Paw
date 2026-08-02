@@ -21,6 +21,7 @@ export const ENDPOINTS = {
     MEDICATION_DETAIL: (petId, medicationId) => `/api/v1/pets/${petId}/medications/${medicationId}`,
     SCHEDULES: (petId) => `/api/v1/pets/${petId}/schedules`,
     SCHEDULE_DETAIL: (petId, scheduleId) => `/api/v1/pets/${petId}/schedules/${scheduleId}`,
+    HEALTH_NOTE_DETAIL: (petId, noteId) => `/api/v1/pets/${petId}/health-notes/${noteId}`,
     REPORT_MONTHLY: (petId) => `/api/v1/pets/${petId}/report/monthly`,
     AI_BREED: (petId) => `/api/v1/pets/${petId}/ai-breed`,
     NOTIFICATIONS: (petId) => `/api/v1/pets/${petId}/notifications`,

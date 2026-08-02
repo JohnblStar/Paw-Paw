@@ -3,6 +3,9 @@ from typing import Literal
 from pydantic import BaseModel
 
 class HealthNote(BaseModel):
+    # 이 필드가 붙기 전에 저장된 기존 기록은 id가 없을 수 있다 — 그런 기록은 프론트에서
+    # 수정/삭제 버튼 없이 읽기 전용으로만 표시한다.
+    id: str | None = None
     date: date
     bodyPart: str
     note: str
