@@ -8,6 +8,7 @@ import MarkdownText from '@/components/common/MarkdownText'
 import { usePet } from '@/context/usePet'
 import api from '@/api/instance'
 import { ENDPOINTS } from '@/api/endpoints'
+import { PRIMARY_BUTTON_CLASS } from '@/constants/formStyles'
 
 const INTRO_MESSAGE = {
   role: 'assistant',
@@ -136,7 +137,7 @@ export default function ChatbotPage() {
           <button
             type="submit"
             disabled={isSending || !input.trim()}
-            className="shrink-0 rounded-xl bg-primary-mint px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-primary-mint-dark hover:text-white disabled:opacity-50"
+            className={`shrink-0 ${PRIMARY_BUTTON_CLASS}`}
           >
             보내기
           </button>

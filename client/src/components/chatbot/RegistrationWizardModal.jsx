@@ -2,10 +2,11 @@ import { useState } from 'react'
 import Modal from '@/components/common/Modal'
 import FormField, { ErrorText } from '@/components/common/FormField'
 import ToggleButtonGroup from '@/components/mypetsy/ToggleButtonGroup'
+import AlertTimesInput from '@/components/common/AlertTimesInput'
 import { usePet } from '@/context/usePet'
 import api from '@/api/instance'
 import { ENDPOINTS } from '@/api/endpoints'
-import { INPUT_CLASS } from '@/constants/formStyles'
+import { INPUT_CLASS, PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from '@/constants/formStyles'
 import { todayISO } from '@/utils/date'
 
 const TYPE_OPTIONS = [
@@ -212,23 +213,10 @@ export default function RegistrationWizardModal({ isOpen, onClose, initialType =
       {step === 'med-times' && (
         <div className="flex flex-col gap-4">
           <FormField label={`알림시간 (최대 3개)`}>
-            <div className="flex flex-col gap-2">
-              {form.alertTimes.map((time, index) => (
-                <input
-                  key={index}
-                  type="time"
-                  value={time}
-                  onChange={(event) => {
-                    const value = event.target.value
-                    setForm((prev) => ({
-                      ...prev,
-                      alertTimes: prev.alertTimes.map((t, i) => (i === index ? value : t)),
-                    }))
-                  }}
-                  className={INPUT_CLASS}
-                />
-              ))}
-            </div>
+            <AlertTimesInput
+              value={form.alertTimes}
+              onChange={(alertTimes) => setForm((prev) => ({ ...prev, alertTimes }))}
+            />
           </FormField>
           {error && <ErrorText>{error}</ErrorText>}
           <WizardActions onBack={goBack} onNext={handleMedTimesNext} />
@@ -284,19 +272,10 @@ export default function RegistrationWizardModal({ isOpen, onClose, initialType =
           </div>
           {error && <ErrorText>{error}</ErrorText>}
           <div className="flex justify-between gap-2">
-            <button
-              type="button"
-              onClick={goBack}
-              className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-ink-secondary hover:text-ink"
-            >
+            <button type="button" onClick={goBack} className={SECONDARY_BUTTON_CLASS}>
               수정
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 rounded-xl bg-primary-mint px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-primary-mint-dark hover:text-white disabled:opacity-50"
-            >
+            <button type="button" onClick={handleSave} disabled={isSaving} className={`flex-1 ${PRIMARY_BUTTON_CLASS}`}>
               {isSaving ? '저장 중...' : '확인'}
             </button>
           </div>
@@ -310,21 +289,13 @@ function WizardActions({ onBack, onNext }) {
   return (
     <div className="flex justify-between gap-2">
       {onBack ? (
-        <button
-          type="button"
-          onClick={onBack}
-          className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-ink-secondary hover:text-ink"
-        >
+        <button type="button" onClick={onBack} className={SECONDARY_BUTTON_CLASS}>
           뒤로
         </button>
       ) : (
         <span />
       )}
-      <button
-        type="button"
-        onClick={onNext}
-        className="rounded-xl bg-primary-mint px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-primary-mint-dark hover:text-white"
-      >
+      <button type="button" onClick={onNext} className={PRIMARY_BUTTON_CLASS}>
         다음
       </button>
     </div>
