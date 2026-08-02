@@ -2,11 +2,12 @@ import asyncio
 import re
 from calendar import monthrange
 from collections import defaultdict
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from app.core.database import get_database
+from app.core.pet_helpers import get_owned_pet, today_slots, to_datetime
 from app.models.pet import PetOut
 from app.core.deps import get_current_user
 from typing import Literal
@@ -18,23 +19,6 @@ from app.services import prompts
 from app.services.hai_gpt import HaiGptError, call_json
 
 router = APIRouter(prefix="/api/v1/pets", tags=["pets"])
-
-def _to_datetime(d: date) -> datetime:
-    return datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
-
-async def _get_owned_pet(db, petId: str, user_id: str) -> dict:
-    pet = await db.pets.find_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
-    if pet is None:
-        raise HTTPException(status_code=404, detail="Pet not found")
-    return pet
-
-def _today_slots(med_doc: dict, today: date) -> list[bool]:
-    freq = med_doc["frequencyPerDay"]
-    for entry in med_doc.get("doseLog", []):
-        if entry["date"].date() == today:
-            slots = entry.get("slots", [])
-            return (list(slots) + [False] * freq)[:freq]
-    return [False] * freq
 
 class DailyWeight(BaseModel):
     date: date
@@ -49,9 +33,9 @@ async def get_monthly_weights(
     month_start = date(year, mon, 1)
 
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
     cursor = db.weights.find(
-        {"petId": ObjectId(petId), "date": {"$lte": _to_datetime(date(year, mon, last_day))}}
+        {"petId": ObjectId(petId), "date": {"$lte": to_datetime(date(year, mon, last_day))}}
     ).sort("date", 1)
     entries = {doc["date"].date(): doc["value"] async for doc in cursor}
 
@@ -79,12 +63,12 @@ class MedicationToday(BaseModel):
 @router.get("/{petId}/medications/today", response_model=list[MedicationToday])
 async def get_today_medications(petId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
     today = date.today()
     cursor = db.medications.find({"petId": ObjectId(petId)})
     result = []
     async for doc in cursor:
-        slots = _today_slots(doc, today)
+        slots = today_slots(doc, today)
         result.append(
             MedicationToday(
                 id=str(doc["_id"]),
@@ -111,7 +95,7 @@ async def get_medications_calendar(
     month_start = date(year, mon, 1)
 
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
     medications = [doc async for doc in db.medications.find({"petId": ObjectId(petId)})]
     total = sum(med["frequencyPerDay"] for med in medications)
 
@@ -136,10 +120,10 @@ async def toggle_medication_check(
     petId: str, medicationId: str, slotIndex: int = Query(..., ge=0), user_id: str = Depends(get_current_user)
 ):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
     medications = db.medications
     today = date.today()
-    today_dt = _to_datetime(today)
+    today_dt = to_datetime(today)
 
     doc = await medications.find_one({"_id": ObjectId(medicationId), "petId": ObjectId(petId)})
     if doc is None:
@@ -148,7 +132,7 @@ async def toggle_medication_check(
     if slotIndex >= freq:
         raise HTTPException(status_code=400, detail="유효하지 않은 복약 회차입니다")
 
-    slots = _today_slots(doc, today)
+    slots = today_slots(doc, today)
     slots[slotIndex] = not slots[slotIndex]
     has_today_entry = any(entry["date"].date() == today for entry in doc.get("doseLog", []))
 
@@ -203,7 +187,7 @@ class MedicationUpdate(BaseModel):
 @router.post("/{petId}/medications", response_model=MedicationOut, status_code=201)
 async def create_medication(petId: str, body: MedicationCreate, user_id: str = Depends(get_current_user)):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     doc = {
         "petId": ObjectId(petId),
@@ -221,7 +205,7 @@ async def update_medication(
     petId: str, medicationId: str, body: MedicationUpdate, user_id: str = Depends(get_current_user)
 ):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     doc = await db.medications.find_one_and_update(
         {"_id": ObjectId(medicationId), "petId": ObjectId(petId)},
@@ -235,7 +219,7 @@ async def update_medication(
 @router.delete("/{petId}/medications/{medicationId}", status_code=204)
 async def delete_medication(petId: str, medicationId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     result = await db.medications.delete_one({"_id": ObjectId(medicationId), "petId": ObjectId(petId)})
     if result.deleted_count == 0:
@@ -250,7 +234,7 @@ async def get_upcoming_schedule_dday(petId: str) -> ScheduleDDay | None:
     db = get_database()
     today = date.today()
     doc = await db.schedules.find_one(
-        {"petId": ObjectId(petId), "date": {"$gte": _to_datetime(today)}},
+        {"petId": ObjectId(petId), "date": {"$gte": to_datetime(today)}},
         sort=[("date", 1)],
     )
     if doc is None:
@@ -273,7 +257,7 @@ class DashboardOut(BaseModel):
 @router.get("/{petId}/dashboard", response_model=DashboardOut)
 async def get_dashboard(petId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
-    pet_doc = await _get_owned_pet(db, petId, user_id)
+    pet_doc = await get_owned_pet(db, petId, user_id)
 
     today = date.today()
     window_start = today - timedelta(days=4)
@@ -284,7 +268,7 @@ async def get_dashboard(petId: str, user_id: str = Depends(get_current_user)):
     )
 
     cursor = db.weights.find(
-        {"petId": ObjectId(petId), "date": {"$lte": _to_datetime(today)}}
+        {"petId": ObjectId(petId), "date": {"$lte": to_datetime(today)}}
     ).sort("date", 1)
     entries = {doc["date"].date(): doc["value"] async for doc in cursor}
     prior_dates = [d for d in entries if d < window_start]
@@ -325,7 +309,7 @@ async def create_pet(body: PetCreate, user_id: str = Depends(get_current_user)):
         "name": body.name,
         "species": body.species,
         "breed": body.breed,
-        "birthDate": _to_datetime(body.birthDate),
+        "birthDate": to_datetime(body.birthDate),
         "sex": body.sex,
         "neutered": body.neutered,
         "weight": body.weight,
@@ -353,7 +337,7 @@ async def update_pet(petId: str, body: PetCreate, user_id: str = Depends(get_cur
         "name": body.name,
         "species": body.species,
         "breed": body.breed,
-        "birthDate": _to_datetime(body.birthDate),
+        "birthDate": to_datetime(body.birthDate),
         "sex": body.sex,
         "neutered": body.neutered,
         "weight": body.weight,
@@ -377,7 +361,7 @@ async def update_health_note(
     petId: str, noteId: str, body: HealthNoteUpdate, user_id: str = Depends(get_current_user)
 ):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     result = await db.pets.update_one(
         {"_id": ObjectId(petId), "healthNotes.id": noteId},
@@ -392,7 +376,7 @@ async def update_health_note(
 @router.delete("/{petId}/health-notes/{noteId}", response_model=PetOut)
 async def delete_health_note(petId: str, noteId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     await db.pets.update_one(
         {"_id": ObjectId(petId)},
@@ -431,17 +415,17 @@ class WeightCreate(BaseModel):
 @router.get("/{petId}/weights", response_model=list[WeightOut])
 async def get_weight_entries(petId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
     cursor = db.weights.find({"petId": ObjectId(petId)}).sort("date", -1)
     return [WeightOut.from_mongo(doc) async for doc in cursor]
 
 @router.post("/{petId}/weights", response_model=WeightOut, status_code=201)
 async def create_weight_entry(petId: str, body: WeightCreate, user_id: str = Depends(get_current_user)):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     doc = await db.weights.find_one_and_update(
-        {"petId": ObjectId(petId), "date": _to_datetime(body.date)},
+        {"petId": ObjectId(petId), "date": to_datetime(body.date)},
         {"$set": {"value": body.weight}},
         upsert=True,
         return_document=True,
@@ -451,11 +435,11 @@ async def create_weight_entry(petId: str, body: WeightCreate, user_id: str = Dep
 @router.patch("/{petId}/weights/{weightId}", response_model=WeightOut)
 async def update_weight_entry(petId: str, weightId: str, body: WeightCreate, user_id: str = Depends(get_current_user)):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     doc = await db.weights.find_one_and_update(
         {"_id": ObjectId(weightId), "petId": ObjectId(petId)},
-        {"$set": {"date": _to_datetime(body.date), "value": body.weight}},
+        {"$set": {"date": to_datetime(body.date), "value": body.weight}},
         return_document=True,
     )
     if doc is None:
@@ -465,7 +449,7 @@ async def update_weight_entry(petId: str, weightId: str, body: WeightCreate, use
 @router.delete("/{petId}/weights/{weightId}", status_code=204)
 async def delete_weight_entry(petId: str, weightId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     result = await db.weights.delete_one({"_id": ObjectId(weightId), "petId": ObjectId(petId)})
     if result.deleted_count == 0:
@@ -474,7 +458,7 @@ async def delete_weight_entry(petId: str, weightId: str, user_id: str = Depends(
 async def get_all_schedules(petId: str) -> list[ScheduleItem]:
     db = get_database()
     cursor = db.schedules.find(
-        {"petId": ObjectId(petId), "date": {"$gte": _to_datetime(date.today())}}
+        {"petId": ObjectId(petId), "date": {"$gte": to_datetime(date.today())}}
     ).sort("date", 1)
 
     return [
@@ -489,12 +473,12 @@ class ScheduleCreate(BaseModel):
 @router.post("/{petId}/schedules", response_model=ScheduleOut, status_code=201)
 async def create_schedule(petId: str, body: ScheduleCreate, user_id: str = Depends(get_current_user)):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     doc = {
         "petId": ObjectId(petId),
         "title": body.title,
-        "date": _to_datetime(body.date),
+        "date": to_datetime(body.date),
     }
     result = await db.schedules.insert_one(doc)
     doc["_id"] = result.inserted_id
@@ -505,11 +489,11 @@ async def update_schedule(
     petId: str, scheduleId: str, body: ScheduleCreate, user_id: str = Depends(get_current_user)
 ):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     doc = await db.schedules.find_one_and_update(
         {"_id": ObjectId(scheduleId), "petId": ObjectId(petId)},
-        {"$set": {"title": body.title, "date": _to_datetime(body.date)}},
+        {"$set": {"title": body.title, "date": to_datetime(body.date)}},
         return_document=True,
     )
     if doc is None:
@@ -519,7 +503,7 @@ async def update_schedule(
 @router.delete("/{petId}/schedules/{scheduleId}", status_code=204)
 async def delete_schedule(petId: str, scheduleId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     result = await db.schedules.delete_one({"_id": ObjectId(scheduleId), "petId": ObjectId(petId)})
     if result.deleted_count == 0:
@@ -531,7 +515,7 @@ class BreedGuideRequest(BaseModel):
 @router.post("/{petId}/ai-breed", response_model=BreedGuideOut)
 async def generate_breed_guide(petId: str, body: BreedGuideRequest, user_id: str = Depends(get_current_user)):
     db = get_database()
-    await _get_owned_pet(db, petId, user_id)
+    await get_owned_pet(db, petId, user_id)
 
     raw_input = body.rawBreedInput.strip()
     cached = await db.breedGuides.find_one({"$or": [{"breed": raw_input}, {"rawInputAliases": raw_input}]})
