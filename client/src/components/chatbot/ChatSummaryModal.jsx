@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Modal from '@/components/common/Modal'
+import LoadingPaws from '@/components/common/LoadingPaws'
 import api from '@/api/instance'
 import { ENDPOINTS } from '@/api/endpoints'
 
@@ -29,7 +30,7 @@ export default function ChatSummaryModal({ isOpen, onClose }) {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={summary?.summaryTitle ?? '답변 요약'}>
-      {isLoading && <p className="text-sm text-ink-secondary">불러오는 중...</p>}
+      {isLoading && <LoadingPaws size={40} />}
       {error && <p className="text-sm text-coral">{error}</p>}
       {summary && (
         <div className="flex flex-col gap-4">

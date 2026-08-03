@@ -6,6 +6,9 @@ export default function LeftWidget({ pet, upcomingDday, week }) {
       <div>
         <p className="text-xs text-ink-secondary">우리 아이</p>
         <p className="text-lg font-bold text-ink">{pet.name}</p>
+        <p className="mt-1 text-sm text-ink-secondary">
+          현재 체중 <span className="font-semibold text-ink">{pet.weight}kg</span>
+        </p>
       </div>
 
       {upcomingDday && (

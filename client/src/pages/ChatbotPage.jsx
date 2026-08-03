@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import PageLayout from '@/components/layout/PageLayout'
 import Card from '@/components/common/Card'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
+import LoadingPaws from '@/components/common/LoadingPaws'
 import RegistrationWizardModal from '@/components/chatbot/RegistrationWizardModal'
 import ChatSummaryModal from '@/components/chatbot/ChatSummaryModal'
 import MarkdownText from '@/components/common/MarkdownText'
@@ -37,7 +38,7 @@ export default function ChatbotPage() {
   if (isPetLoading) {
     return (
       <PageLayout>
-        <p className="text-sm text-ink-secondary">불러오는 중...</p>
+        <LoadingPaws />
       </PageLayout>
     )
   }
