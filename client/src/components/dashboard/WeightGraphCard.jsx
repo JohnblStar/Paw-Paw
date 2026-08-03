@@ -3,7 +3,7 @@ import Card from '@/components/common/Card'
 import WeightLineChart from '@/components/common/WeightLineChart'
 import WeightLogModal from '@/components/dashboard/WeightLogModal'
 
-export default function WeightGraphCard({ petId, data, entries, onChanged }) {
+export default function WeightGraphCard({ petId, data, entries, onSaved }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   return (
@@ -26,7 +26,7 @@ export default function WeightGraphCard({ petId, data, entries, onChanged }) {
         onClose={() => setIsModalOpen(false)}
         petId={petId}
         entries={entries}
-        onChanged={onChanged}
+        onSaved={onSaved}
       />
     </Card>
   )

@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react'
 import Modal from '@/components/common/Modal'
 import FormField, { ErrorText } from '@/components/common/FormField'
 import { useWeight } from '@/context/useWeight'
-import { INPUT_CLASS } from '@/constants/formStyles'
+import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/constants/formStyles'
 import { todayISO } from '@/utils/date'
 import { isValidWeight } from '@/utils/validation'
 
-export default function WeightLogModal({ isOpen, onClose, petId, entries, onChanged }) {
+export default function WeightLogModal({ isOpen, onClose, petId, entries, onSaved }) {
   const { addWeightEntry, updateWeightEntry, deleteWeightEntry } = useWeight()
   const [editingId, setEditingId] = useState(null)
   const [date, setDate] = useState(todayISO())
@@ -42,7 +42,7 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries, onChan
       await addWeightEntry(petId, { date, weight: Number(weight) })
     }
     resetForm()
-    onChanged?.()
+    onSaved?.()
   }
 
   const handleEditClick = (entry) => {
@@ -85,10 +85,7 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries, onChan
             />
           </FormField>
         </div>
-        <button
-          type="submit"
-          className="rounded-xl bg-primary-mint px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-primary-mint-dark hover:text-white"
-        >
+        <button type="submit" className={PRIMARY_BUTTON_CLASS}>
           {editingId ? '수정' : '기록'}
         </button>
       </form>
@@ -124,7 +121,7 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries, onChan
                 type="button"
                 onClick={() => {
                   if (window.confirm('이 체중 기록을 삭제할까요?')) {
-                    deleteWeightEntry(petId, entry.id).then(() => onChanged?.())
+                    deleteWeightEntry(petId, entry.id).then(() => onSaved?.())
                   }
                 }}
                 className="text-xs text-coral hover:text-coral/80"

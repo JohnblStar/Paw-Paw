@@ -1,10 +1,11 @@
 from datetime import date, datetime, timezone
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.core.database import get_database
 from app.core.deps import get_current_user
+from app.core.pet_helpers import get_owned_pet, today_slots
 from app.models.notification import NotificationListOut, NotificationOut
 
 router = APIRouter(prefix="/api/v1/pets", tags=["notifications"])
@@ -15,15 +16,6 @@ router = APIRouter(prefix="/api/v1/pets", tags=["notifications"])
 SCHEDULE_DDAY_MILESTONES = {7, 1, 0}
 
 
-def _today_slots(med_doc: dict, today: date) -> list[bool]:
-    freq = med_doc["frequencyPerDay"]
-    for entry in med_doc.get("doseLog", []):
-        if entry["date"].date() == today:
-            slots = entry.get("slots", [])
-            return (list(slots) + [False] * freq)[:freq]
-    return [False] * freq
-
-
 async def _build_due_notifications(db, pet_id: ObjectId, today: date) -> list[NotificationOut]:
     notifications: list[NotificationOut] = []
     now_hhmm = datetime.now().strftime("%H:%M")
@@ -32,7 +24,7 @@ async def _build_due_notifications(db, pet_id: ObjectId, today: date) -> list[No
         alert_times = med.get("alertTimes", [])
         if not alert_times:
             continue
-        slots = _today_slots(med, today)
+        slots = today_slots(med, today)
         # 알림시간은 frequencyPerDay 중 최대 3회분에만 매핑된다 — 나머지 복용 회차는
         # 리마인드 시간이 없어 인앱 알림 대상이 아니다 (dashboard.md, alertTimes 최대 3개).
         for i, alert_time in enumerate(alert_times):
@@ -73,9 +65,7 @@ async def _build_due_notifications(db, pet_id: ObjectId, today: date) -> list[No
 @router.get("/{petId}/notifications", response_model=NotificationListOut)
 async def get_notifications(petId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
-    pet = await db.pets.find_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
-    if pet is None:
-        raise HTTPException(status_code=404, detail="Pet not found")
+    pet = await get_owned_pet(db, petId, user_id)
 
     today = date.today()
     due = await _build_due_notifications(db, pet["_id"], today)
@@ -94,9 +84,7 @@ async def get_notifications(petId: str, user_id: str = Depends(get_current_user)
 @router.patch("/{petId}/notifications/{notificationId}/read", status_code=204)
 async def mark_notification_read(petId: str, notificationId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
-    pet = await db.pets.find_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
-    if pet is None:
-        raise HTTPException(status_code=404, detail="Pet not found")
+    await get_owned_pet(db, petId, user_id)
 
     await db.notificationReads.update_one(
         {"userId": ObjectId(user_id), "notificationId": notificationId},

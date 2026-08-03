@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.database import get_database
 from app.core.deps import get_current_user
+from app.core.pet_helpers import age_years
 from app.models.breed_guide import BreedGuideFeedback
 from app.models.report import (
     DiagnosisOpinion,
@@ -30,14 +31,6 @@ FALLBACK_REPORT_TEXT = (
     "## 면책 문구\n"
     "AI가 분석한 정보는 정확하지 않을 수 있습니다."
 )
-
-
-def _age_years(birth_date: date) -> int:
-    today = date.today()
-    years = today.year - birth_date.year
-    if (today.month, today.day) < (birth_date.month, birth_date.day):
-        years -= 1
-    return years
 
 
 def _months_before(d: date, months: int) -> date:
@@ -184,7 +177,7 @@ async def _build_report_context(pet_doc: dict) -> str:
     lines = [
         "[반려동물 기본정보]",
         f"이름: {pet_doc['name']} / 품종: {pet_doc.get('breed') or '미상'} / "
-        f"나이: {_age_years(pet_doc['birthDate'])}세 / 성별: {pet_doc['sex']} "
+        f"나이: {age_years(pet_doc['birthDate'])}세 / 성별: {pet_doc['sex']} "
         f"(중성화: {'완료' if pet_doc['neutered'] else '미완료'})",
         "",
         "[체중 변화 이력]",
@@ -302,7 +295,7 @@ async def get_monthly_report(
 
     return HealthReportOut(
         petProfile=ReportPetProfile(
-            name=pet_doc["name"], age=_age_years(pet_doc["birthDate"]), breed=pet_doc.get("breed")
+            name=pet_doc["name"], age=age_years(pet_doc["birthDate"]), breed=pet_doc.get("breed")
         ),
         period=period,
         breedGuide=breed_guide,

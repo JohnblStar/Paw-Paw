@@ -23,7 +23,6 @@ export default function WeightLineChart({ points }) {
 
   const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ')
   const labelStep = Math.max(Math.ceil(points.length / 6), 1)
-  const last = coords[coords.length - 1]
 
   return (
     <svg viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`} className="w-full" role="img" aria-label="체중 변화 그래프">

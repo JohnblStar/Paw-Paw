@@ -37,6 +37,8 @@
 - `POST /api/v1/pets/{petId}/schedules` — 예방접종 등록 (single_date 공용, 검진 등 확장 가능)
 - `PATCH /api/v1/pets/{petId}/medications/{id}` — 이름/시간 수정
 - `DELETE /api/v1/pets/{petId}/medications/{id}`
+- `PATCH /api/v1/pets/{petId}/schedules/{id}` — 항목명/날짜 수정 (대시보드 `ScheduleEditModal`에서 사용)
+- `DELETE /api/v1/pets/{petId}/schedules/{id}` (대시보드 `ScheduleEditModal`에서 사용)
 
 ## 카카오 알림 연동
 - 복약: 지정 시간마다 발송 (하루 최대 3회), 말풍선 [복용 완료] 클릭 시 `POST /api/v1/callback/kakao-medication`으로 즉시 반영

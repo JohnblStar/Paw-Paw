@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.database import get_database
 from app.core.deps import get_current_user
+from app.core.pet_helpers import age_years, to_datetime
 from app.models.chat import (
     ChatQueryRequest,
     ChatQueryResponse,
@@ -48,10 +49,6 @@ def _detect_registration_intent(text: str) -> RegistrationSuggestion | None:
     return None
 
 
-def _to_datetime(d: date) -> datetime:
-    return datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
-
-
 # 반복 질문 캐싱 — 동일 질문 재입력 시 LLM을 다시 호출하지 않는다 (SPEC.md §7.9, 토큰 절약 원칙).
 # TTL을 짧게 두는 이유: 컨텍스트(체중/복약 등)가 시간에 따라 바뀔 수 있어 오래 캐싱하면
 # 답변이 최신 상태를 반영하지 못할 수 있다.
@@ -60,14 +57,6 @@ CHAT_CACHE_TTL_SECONDS = 600
 
 def _normalize_question(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip())
-
-
-def _age_years(birth_date: date) -> int:
-    today = date.today()
-    years = today.year - birth_date.year
-    if (today.month, today.day) < (birth_date.month, birth_date.day):
-        years -= 1
-    return years
 
 
 async def _build_context_block(pet_doc: dict) -> str:
@@ -86,7 +75,7 @@ async def _build_context_block(pet_doc: dict) -> str:
     lines = [
         "[반려동물 기본정보]",
         f"이름: {pet_doc['name']} / 품종: {pet_doc.get('breed') or '미상'} / "
-        f"나이: {_age_years(pet_doc['birthDate'])}세 / 현재 체중: {pet_doc['weight']}kg / "
+        f"나이: {age_years(pet_doc['birthDate'])}세 / 현재 체중: {pet_doc['weight']}kg / "
         f"성별: {pet_doc['sex']} (중성화: {'완료' if pet_doc['neutered'] else '미완료'})",
         "",
         "[최근 체중]",
@@ -182,7 +171,7 @@ async def chat_query(body: ChatQueryRequest, user_id: str = Depends(get_current_
                 {"_id": pet_doc["_id"]},
                 {"$push": {"healthNotes": {
                     "id": str(ObjectId()),
-                    "date": _to_datetime(date.today()),
+                    "date": to_datetime(date.today()),
                     "bodyPart": area or "기타",
                     "note": symptom_summary,
                     "suspectedSymptom": suspected_symptom,

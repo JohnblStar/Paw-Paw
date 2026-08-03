@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Modal from '@/components/common/Modal'
 import FormField, { ErrorText } from '@/components/common/FormField'
+import EditModalActions from '@/components/common/EditModalActions'
 import { INPUT_CLASS } from '@/constants/formStyles'
 import api from '@/api/instance'
 import { ENDPOINTS } from '@/api/endpoints'
@@ -68,23 +69,7 @@ export default function ScheduleEditModal({ isOpen, onClose, petId, schedule, on
                     />
                 </FormField>
                 {error && <ErrorText>{error}</ErrorText>}
-                <div className="flex justify-between gap-2">
-                    <button
-                        type="button"
-                        onClick={handleDelete}
-                        disabled={isSaving}
-                        className="rounded-xl border border-coral px-4 py-2.5 text-sm font-semibold text-coral transition-colors hover:bg-coral/10 disabled:opacity-50"
-                    >
-                        삭제
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={isSaving}
-                        className="flex-1 rounded-xl bg-primary-mint px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-primary-mint-dark hover:text-white disabled:opacity-50"
-                    >
-                        {isSaving ? '저장 중...' : '저장'}
-                    </button>
-                </div>
+                <EditModalActions onDelete={handleDelete} isSaving={isSaving} />
             </form>
         </Modal>
     )
