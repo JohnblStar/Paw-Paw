@@ -64,6 +64,7 @@ function MainPageContent({ pet }) {
     medicationsToday: dashboardData.medicationsToday,
     upcomingDday,
     todayHealthNote,
+    species: pet.species,
   })
 
   const today = new Date().toLocaleDateString('ko-KR', {
