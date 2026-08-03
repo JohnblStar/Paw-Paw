@@ -87,7 +87,7 @@ def _build_analysis_message(
 # REPORT_SYSTEM_PROMPT가 요구하는 고정 헤더(## 종합소견 / ## 앞으로의 케어가이드 / ## 면책 문구)를
 # 기준으로 diagnosisOpinions를 후처리 분할한다 — 프롬프트 재설계가 아닌 생성된 텍스트의 파싱.
 _SECTION_RE = re.compile(r"^##\s*(.+?)\s*$", re.MULTILINE)
-_BULLET_RE = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s+(.*\S)\s*$")
+_BULLET_RE = re.compile(r"^(\s*)(?:[-*•]|\d+[.)])\s+(.*\S)\s*$")
 _TIMELINE_RE = re.compile(r"^\s*(?:[-*•]\s*)?\d{4}[-.]\d{1,2}[-.]\d{1,2}")
 # "종합소견"은 "1. 시기별 타임라인 정리 → 2. 종합 판단 → 3. 실천 가이드" 3블록으로 구성된다.
 # 블록 1(타임라인 정리)은 하위 불릿까지 통째로 제외하고, 블록 2/3(종합 판단·실천 가이드)의
@@ -109,7 +109,19 @@ def _split_sections(report_text: str) -> dict[str, str]:
 
 
 def _bullet_lines(text: str) -> list[str]:
-    return [m.group(1).strip() for line in text.splitlines() if (m := _BULLET_RE.match(line))]
+    # 들여쓰기된 하위 불릿(예: "- 급여 방식 조정:" 아래 딸린 세부 항목들)은 독립된 opinion이
+    # 아니라 직전 최상위 불릿의 보충 설명이므로, 새 항목으로 쪼개지 않고 이어붙인다.
+    lines: list[str] = []
+    for raw_line in text.splitlines():
+        match = _BULLET_RE.match(raw_line)
+        if not match:
+            continue
+        indent, item = match.group(1), match.group(2).strip()
+        if indent and lines:
+            lines[-1] = f"{lines[-1]} {item}"
+        else:
+            lines.append(item)
+    return lines
 
 
 def _split_step_blocks(text: str) -> list[str]:

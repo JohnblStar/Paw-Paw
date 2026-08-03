@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import PageLayout from '@/components/layout/PageLayout'
 import Card from '@/components/common/Card'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
+import LoadingPaws from '@/components/common/LoadingPaws'
 import PetCard from '@/components/mypetsy/PetCard'
 import OwnerProfileCard from '@/components/mypetsy/OwnerProfileCard'
 import { usePet } from '@/context/usePet'
@@ -14,7 +15,7 @@ export default function MyPetsyPage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <p className="text-sm text-ink-secondary">불러오는 중...</p>
+        <LoadingPaws />
       </PageLayout>
     )
   }

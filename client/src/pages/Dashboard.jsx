@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PageLayout from '@/components/layout/PageLayout'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
+import LoadingPaws from '@/components/common/LoadingPaws'
 import BasicInfoCard from '@/components/dashboard/BasicInfoCard'
 import TodayMedicationCard from '@/components/dashboard/TodayMedicationCard'
 import VaccinationListCard from '@/components/dashboard/VaccinationListCard'
@@ -56,7 +57,7 @@ function DashboardContent({ pet }) {
   if (!dashboardData) {
     return (
       <PageLayout>
-        <p className="text-sm text-ink-secondary">불러오는 중...</p>
+        <LoadingPaws />
       </PageLayout>
     )
   }
@@ -117,7 +118,7 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <PageLayout>
-        <p className="text-sm text-ink-secondary">불러오는 중...</p>
+        <LoadingPaws />
       </PageLayout>
     )
   }

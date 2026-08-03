@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import PageLayout from '@/components/layout/PageLayout'
 import Card from '@/components/common/Card'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
+import LoadingPaws from '@/components/common/LoadingPaws'
+import MarkdownText from '@/components/common/MarkdownText'
 import ToggleButtonGroup from '@/components/mypetsy/ToggleButtonGroup'
 import { usePet } from '@/context/usePet'
 import api from '@/api/instance'
@@ -145,7 +147,7 @@ function HealthReportContent({ pet, year, month }) {
                   {report.diagnosisOpinions.map((opinion) => (
                     <li key={opinion.id} className="flex items-start gap-2 text-sm text-ink">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary-purple" />
-                      {opinion.text}
+                      <MarkdownText>{opinion.text}</MarkdownText>
                     </li>
                   ))}
                 </ul>
@@ -154,7 +156,9 @@ function HealthReportContent({ pet, year, month }) {
 
             {splitReportSections(report.reportText).map(({ title, body }) => (
               <Card key={title} title={title}>
-                <p className="whitespace-pre-wrap text-sm text-ink">{body}</p>
+                <div className="text-sm text-ink">
+                  <MarkdownText>{body}</MarkdownText>
+                </div>
               </Card>
             ))}
           </div>
@@ -170,7 +174,7 @@ export default function HealthReportPage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <p className="text-sm text-ink-secondary">불러오는 중...</p>
+        <LoadingPaws />
       </PageLayout>
     )
   }

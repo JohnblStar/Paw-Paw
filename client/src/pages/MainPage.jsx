@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageLayout from '@/components/layout/PageLayout'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
+import LoadingPaws from '@/components/common/LoadingPaws'
 import LeftWidget from '@/components/mainpage/LeftWidget'
-import MascotPlaceholder from '@/components/mainpage/MascotPlaceholder'
+import Mascot from '@/components/mainpage/Mascot'
 import SpeechBubble from '@/components/mainpage/SpeechBubble'
 import { usePet } from '@/context/usePet'
 import api from '@/api/instance'
@@ -50,7 +51,7 @@ function MainPageContent({ pet }) {
   if (!dashboardData) {
     return (
       <PageLayout>
-        <p className="text-sm text-ink-secondary">불러오는 중...</p>
+        <LoadingPaws />
       </PageLayout>
     )
   }
@@ -75,15 +76,15 @@ function MainPageContent({ pet }) {
 
   return (
     <PageLayout>
-      <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center gap-10">
+      <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center gap-10 pt-10 sm:pt-14">
         <div className="text-center">
-          <p className="text-sm text-ink-secondary">{today}</p>
-          <p className="mt-1 text-2xl font-bold text-ink">{pet.name}와 함께하는 하루</p>
+          <p className="text-base text-ink-secondary">{today}</p>
+          <p className="mt-1 text-4xl font-bold text-ink">{pet.name}와 함께하는 하루</p>
         </div>
 
-        <div className="grid w-full grid-cols-1 items-center gap-6 lg:grid-cols-[300px_1fr_300px]">
+        <div className="grid w-full grid-cols-1 items-center gap-6 lg:grid-cols-[340px_1fr_340px]">
           <LeftWidget pet={pet} upcomingDday={upcomingDday} week={weekCalendar} />
-          <MascotPlaceholder />
+          <Mascot species={pet.species} />
           <div className="flex justify-center lg:justify-start">
             <SpeechBubble message={bubbleMessage} />
           </div>
@@ -107,7 +108,7 @@ export default function MainPage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <p className="text-sm text-ink-secondary">불러오는 중...</p>
+        <LoadingPaws />
       </PageLayout>
     )
   }
