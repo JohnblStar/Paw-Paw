@@ -17,5 +17,8 @@ class Settings(BaseSettings):
     KAKAO_CLIENT_SECRET: str = ""
     KAKAO_REDIRECT_URI: str
 
+    # 배포된 프론트엔드 origin (예: https://paw-paw.vercel.app). CORS 허용 목록에 추가된다.
+    FRONTEND_ORIGIN: str = ""
+
 
 settings = Settings()
