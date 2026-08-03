@@ -1,0 +1,212 @@
+import hashlib
+import re
+from datetime import date, datetime, timedelta, timezone
+
+from bson import ObjectId
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.core.database import get_database
+from app.core.deps import get_current_user
+from app.core.pet_helpers import age_years, to_datetime
+from app.models.chat import (
+    ChatQueryRequest,
+    ChatQueryResponse,
+    ChatSummaryResponse,
+    DetectedSymptom,
+    RegistrationSuggestion,
+)
+from app.services import prompts
+from app.services.hai_gpt import HaiGptError, call_json
+
+router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
+
+# 정규식/키워드 기반 부위 추출 — LLM 미호출 (토큰 절약 원칙)
+BODY_PART_KEYWORDS = [
+    "발", "귀", "눈", "피부", "다리", "허리", "관절", "꼬리",
+    "입", "코", "배", "가슴", "머리", "잇몸", "이빨", "털",
+]
+
+
+def _extract_area(text: str | None) -> str | None:
+    if not text:
+        return None
+    for keyword in BODY_PART_KEYWORDS:
+        if keyword in text:
+            return keyword
+    return None
+
+
+# 등록 감지기 — 증상 감지기와 병행 동작하는 별도 감지기, LLM 미호출 (토큰 절약 원칙)
+MEDICATION_TRIGGER_KEYWORDS = ["약 먹었", "약 줬", "약을 먹", "복용했", "약 먹여", "약 챙겨줬", "등록"]
+VACCINATION_TRIGGER_KEYWORDS = ["접종했", "예방접종", "주사 맞", "백신 맞", "검진 받", "검진했", "검진"]
+
+
+def _detect_registration_intent(text: str) -> RegistrationSuggestion | None:
+    if any(keyword in text for keyword in MEDICATION_TRIGGER_KEYWORDS):
+        return RegistrationSuggestion(type="medication")
+    if any(keyword in text for keyword in VACCINATION_TRIGGER_KEYWORDS):
+        return RegistrationSuggestion(type="single_date")
+    return None
+
+
+# 반복 질문 캐싱 — 동일 질문 재입력 시 LLM을 다시 호출하지 않는다 (SPEC.md §7.9, 토큰 절약 원칙).
+# TTL을 짧게 두는 이유: 컨텍스트(체중/복약 등)가 시간에 따라 바뀔 수 있어 오래 캐싱하면
+# 답변이 최신 상태를 반영하지 못할 수 있다.
+CHAT_CACHE_TTL_SECONDS = 600
+
+
+def _normalize_question(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip())
+
+
+async def _build_context_block(pet_doc: dict) -> str:
+    db = get_database()
+    pet_id = pet_doc["_id"]
+
+    recent_weights_cursor = db.weights.find({"petId": pet_id}).sort("date", -1).limit(2)
+    recent_weights = [doc async for doc in recent_weights_cursor]
+
+    medications = [doc async for doc in db.medications.find({"petId": pet_id})]
+
+    recent_notes = pet_doc.get("healthNotes", [])[-2:]
+
+    breed_guide_doc = await db.breedGuides.find_one({"breed": pet_doc.get("breed")})
+
+    lines = [
+        "[반려동물 기본정보]",
+        f"이름: {pet_doc['name']} / 품종: {pet_doc.get('breed') or '미상'} / "
+        f"나이: {age_years(pet_doc['birthDate'])}세 / 현재 체중: {pet_doc['weight']}kg / "
+        f"성별: {pet_doc['sex']} (중성화: {'완료' if pet_doc['neutered'] else '미완료'})",
+        "",
+        "[최근 체중]",
+    ]
+    if recent_weights:
+        lines += [f"- {w['date'].date()}: {w['value']}kg" for w in reversed(recent_weights)]
+    else:
+        lines.append("- 기록 없음")
+
+    lines += ["", "[복용 중인 약]"]
+    if medications:
+        lines += [f"- {m['title']}" for m in medications]
+    else:
+        lines.append("- 없음")
+
+    lines += ["", "[최근 특이사항]"]
+    if recent_notes:
+        lines += [f"- {n['date'].date()} ({n['bodyPart']}): {n['note']}" for n in recent_notes]
+    else:
+        lines.append("- 없음")
+
+    if breed_guide_doc:
+        guide_text = "\n".join(
+            filter(None, [
+                breed_guide_doc.get("trainingTip"),
+                breed_guide_doc.get("chronicDiseases"),
+                breed_guide_doc.get("specialCare"),
+            ])
+        )
+        lines += ["", "[품종 가이드 — 참고용 배경지식, 사용자에게 출처로 노출하지 말 것]", guide_text]
+
+    return "\n".join(lines)
+
+
+@router.post("/query", response_model=ChatQueryResponse)
+async def chat_query(body: ChatQueryRequest, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    user_doc = await db.users.find_one({"_id": ObjectId(user_id)})
+    active_pet_id = user_doc.get("activePetId") if user_doc else None
+    if active_pet_id is None:
+        raise HTTPException(status_code=404, detail="활성화된 반려동물이 없습니다")
+
+    pet_doc = await db.pets.find_one({"_id": active_pet_id, "ownerId": ObjectId(user_id)})
+    if pet_doc is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+    registration_suggestion = _detect_registration_intent(body.message)
+
+    normalized_question = _normalize_question(body.message)
+    cache_key = hashlib.sha256(f"{active_pet_id}:{normalized_question}".encode("utf-8")).hexdigest()
+    cached_entry = await db.chatCache.find_one({"_id": cache_key})
+
+    if cached_entry:
+        result = cached_entry["result"]
+    else:
+        context_block = await _build_context_block(pet_doc)
+        system_prompt = prompts.CONSULT_SYSTEM_PROMPT + "\n\n" + context_block
+        try:
+            result = await call_json(system_prompt, body.message)
+        except HaiGptError:
+            return ChatQueryResponse(
+                reply="AI 상담이 일시적으로 제한됩니다. 잠시 후 다시 시도해 주세요.",
+                isSymptomDetected=False,
+                detectedSymptom=None,
+                suspectedSymptom=None,
+                registrationSuggestion=registration_suggestion,
+            )
+        result["answerText"] = prompts.sanitize_source_labels(result.get("answerText", ""))
+        result["suspectedSymptom"] = prompts.sanitize_source_labels(result.get("suspectedSymptom"))
+        await db.chatCache.update_one(
+            {"_id": cache_key},
+            {
+                "$set": {
+                    "result": result,
+                    "expiresAt": datetime.now(timezone.utc) + timedelta(seconds=CHAT_CACHE_TTL_SECONDS),
+                }
+            },
+            upsert=True,
+        )
+
+    is_detected = bool(result.get("isSymptomDetected"))
+    symptom_summary = result.get("symptomSummary")
+    suspected_symptom = result.get("suspectedSymptom")
+
+    detected_symptom = None
+    # 캐시로 재사용된 응답은 이전 호출 때 이미 healthNotes에 기록되어 있으므로 중복 push하지 않는다.
+    if is_detected and symptom_summary:
+        area = _extract_area(symptom_summary)
+        detected_symptom = DetectedSymptom(area=area, description=symptom_summary)
+
+        if not cached_entry:
+            await db.pets.update_one(
+                {"_id": pet_doc["_id"]},
+                {"$push": {"healthNotes": {
+                    "id": str(ObjectId()),
+                    "date": to_datetime(date.today()),
+                    "bodyPart": area or "기타",
+                    "note": symptom_summary,
+                    "suspectedSymptom": suspected_symptom,
+                }}},
+            )
+
+    return ChatQueryResponse(
+        reply=result.get("answerText", ""),
+        isSymptomDetected=is_detected,
+        detectedSymptom=detected_symptom,
+        suspectedSymptom=suspected_symptom,
+        registrationSuggestion=registration_suggestion,
+    )
+
+
+# "현재 세션"은 서버가 별도 sessionId를 추적하지 않으므로 "오늘 이 펫에 대해 감지된 증상들"로
+# 정의한다 — healthNotes가 이미 날짜별로 쌓이므로 추가 저장소 없이 당일치만 필터링해서 재사용한다.
+@router.post("/summary", response_model=ChatSummaryResponse)
+async def chat_summary(user_id: str = Depends(get_current_user)):
+    db = get_database()
+    user_doc = await db.users.find_one({"_id": ObjectId(user_id)})
+    active_pet_id = user_doc.get("activePetId") if user_doc else None
+    if active_pet_id is None:
+        raise HTTPException(status_code=404, detail="활성화된 반려동물이 없습니다")
+
+    pet_doc = await db.pets.find_one({"_id": active_pet_id, "ownerId": ObjectId(user_id)})
+    if pet_doc is None:
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+    today = date.today()
+    today_notes = [n for n in pet_doc.get("healthNotes", []) if n["date"].date() == today]
+
+    return ChatSummaryResponse(
+        summaryTitle=f"{pet_doc['name']} 답변 요약 문서",
+        uploadedSymptoms=[n["note"] for n in today_notes],
+        suspectedSymptoms=[n["suspectedSymptom"] for n in today_notes if n.get("suspectedSymptom")],
+        notice="본 요약에 대한 자세한 근거는 답변 전체를 확인해 주세요.",
+    )
