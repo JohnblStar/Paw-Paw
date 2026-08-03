@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  # 1. 미들웨어 임포트
 from app.api.routes import auth, chat, notification, pets, report, users
+from app.core.config import settings
 from app.core.database import close_mongo_connection, connect_to_mongo, get_database
 
 @asynccontextmanager
@@ -17,6 +18,8 @@ origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+if settings.FRONTEND_ORIGIN:
+    origins.append(settings.FRONTEND_ORIGIN)
 
 app.add_middleware(
     CORSMiddleware,

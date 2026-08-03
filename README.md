@@ -32,7 +32,7 @@
 - 💊 **AI 챗봇 (정보 등록)** — 복약·예방접종 정보를 대화 중 자연스럽게 언급하면 버튼 기반 슬롯필링으로 정확하게 등록
 - 📊 **건강 리포트** — 월간 체중 변화, 증상 빈도, AI 진단 소견을 종합한 리포트
 - 🐶 **마이펫이지** — 여러 반려동물을 한 계정에서 전환하며 관리
-- 🔔 **카카오톡 알림** — 복약 시간 알림, 예방접종 D-Day 리마인드 (1주전·1일전·당일)
+- 🔔 **인앱 알림** — 복약 시간 알림, 예방접종 D-Day 리마인드 (1주전·1일전·당일)를 벨 아이콘으로 확인
 
 ## 🛠 Tech Stack
 
@@ -43,7 +43,7 @@
 | Database | MongoDB Atlas (motor 비동기 드라이버) |
 | 인증 | Kakao 소셜 로그인 + JWT 세션 |
 | AI | 학교 제공 HAI-GPT (ChatGPT 계열 API) |
-| 알림 | 카카오톡 알림톡 (Solapi/Coolsms 등 중계 예정) |
+| 알림 | 인앱 알림 (벨 아이콘, 복약·예방접종 전용) — 카카오톡 알림톡은 발신 대행사 계약이 필요해 범위 밖 |
 | 배포 | Vercel (Frontend), Railway (Backend) |
 
 ## 🖥 Getting Started
@@ -73,17 +73,28 @@ uvicorn main:app --reload
 
 ### 환경변수
 ```bash
-# server/.env
+# server/.env (전체 목록은 server/.env.example 참고)
 PORT=8000
 MONGO_URI=
-HAI_GPT_API_KEY=
-KAKAO_REST_API_KEY=
+OPENAI_API_KEY=
+OPENAI_BASE_URL=
+OPENAI_MODEL=
 JWT_SECRET=
+KAKAO_CLIENT_ID=
+KAKAO_CLIENT_SECRET=
+KAKAO_REDIRECT_URI=http://localhost:5173/login/kakao/callback
+FRONTEND_ORIGIN=  # 배포 시에만: 배포된 프론트엔드 origin (CORS 허용용)
 
 # client/.env
 VITE_API_URL=http://localhost:8000
 VITE_KAKAO_JS_KEY=
 ```
+
+## 🚀 Deployment
+
+- **Frontend (Vercel)**: Root Directory를 `client`로 설정. `client/vercel.json`이 SPA 라우팅(새로고침 시 404 방지)을 처리한다. 환경변수는 위 client `.env` 항목 그대로 Vercel 프로젝트 설정에 등록.
+- **Backend (Railway)**: Root Directory를 `server`로 설정. `server/Procfile`이 시작 명령(`uvicorn main:app --host 0.0.0.0 --port $PORT`)을 지정한다. 환경변수는 위 server `.env` 항목을 그대로 등록하되, `FRONTEND_ORIGIN`은 배포된 Vercel 도메인으로 채워야 CORS가 통과한다.
+- **Kakao Developers 콘솔**: 배포된 프론트엔드 도메인의 `/login/kakao/callback`을 Redirect URI로 추가 등록해야 카카오 로그인이 동작한다.
 
 ## 📁 Project Structure
 
