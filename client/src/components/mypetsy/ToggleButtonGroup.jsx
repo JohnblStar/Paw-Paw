@@ -8,7 +8,7 @@ export default function ToggleButtonGroup({ options, value, onChange }) {
             key={String(option.value)}
             type="button"
             onClick={() => onChange(option.value)}
-            className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
+            className={`flex-1 whitespace-nowrap rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
               isSelected
                 ? 'border-primary-mint-dark bg-primary-mint text-ink'
                 : 'border-border bg-white text-ink-secondary hover:border-primary-mint-dark'
