@@ -71,9 +71,7 @@ function HealthReportContent({ pet, year, month }) {
             <p className="text-sm text-ink-secondary">AI가 체중·복약·증상 기록을 종합해 정리했어요</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-36">
-              <ToggleButtonGroup options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
-            </div>
+            <ToggleButtonGroup options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
             <button
               type="button"
               onClick={handleRefresh}
@@ -147,7 +145,9 @@ function HealthReportContent({ pet, year, month }) {
                   {report.diagnosisOpinions.map((opinion) => (
                     <li key={opinion.id} className="flex items-start gap-2 text-sm text-ink">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary-purple" />
-                      <MarkdownText>{opinion.text}</MarkdownText>
+                      <div className="min-w-0 flex-1">
+                        <MarkdownText>{opinion.text}</MarkdownText>
+                      </div>
                     </li>
                   ))}
                 </ul>
