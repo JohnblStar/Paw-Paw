@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import PageLayout from '@/components/layout/PageLayout'
 import Card from '@/components/common/Card'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
 import LoadingPaws from '@/components/common/LoadingPaws'
@@ -36,19 +35,11 @@ export default function ChatbotPage() {
   }, [messages, isSending])
 
   if (isPetLoading) {
-    return (
-      <PageLayout>
-        <LoadingPaws />
-      </PageLayout>
-    )
+    return <LoadingPaws />
   }
 
   if (!activePet) {
-    return (
-      <PageLayout>
-        <EmptyPetState />
-      </PageLayout>
-    )
+    return <EmptyPetState />
   }
 
   const handleSubmit = async (event) => {
@@ -82,7 +73,7 @@ export default function ChatbotPage() {
   }
 
   return (
-    <PageLayout>
+    <>
       <Card className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col p-0">
         <div ref={scrollBoxRef} className="flex-1 space-y-4 overflow-y-auto p-6">
           {messages.map((message, index) => (
@@ -156,6 +147,6 @@ export default function ChatbotPage() {
       />
 
       <ChatSummaryModal isOpen={isSummaryOpen} onClose={() => setIsSummaryOpen(false)} />
-    </PageLayout>
+    </>
   )
 }

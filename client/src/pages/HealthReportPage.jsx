@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import PageLayout from '@/components/layout/PageLayout'
 import Card from '@/components/common/Card'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
 import LoadingPaws from '@/components/common/LoadingPaws'
@@ -61,8 +60,7 @@ function HealthReportContent({ pet, year, month }) {
   const isLoading = !report && !error
 
   return (
-    <PageLayout>
-      <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-ink">
@@ -163,8 +161,7 @@ function HealthReportContent({ pet, year, month }) {
             ))}
           </div>
         )}
-      </div>
-    </PageLayout>
+    </div>
   )
 }
 
@@ -172,19 +169,11 @@ export default function HealthReportPage() {
   const { activePet, isLoading } = usePet()
 
   if (isLoading) {
-    return (
-      <PageLayout>
-        <LoadingPaws />
-      </PageLayout>
-    )
+    return <LoadingPaws />
   }
 
   if (!activePet) {
-    return (
-      <PageLayout>
-        <EmptyPetState />
-      </PageLayout>
-    )
+    return <EmptyPetState />
   }
 
   const now = new Date()
