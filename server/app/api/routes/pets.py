@@ -5,9 +5,9 @@ from collections import defaultdict
 from datetime import date, timedelta
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from app.core.database import get_database
-from app.core.pet_helpers import get_owned_pet, today_slots, to_datetime
+from app.core.pet_helpers import get_owned_pet, is_medication_active, today_slots, to_datetime
 from app.models.pet import PetOut
 from app.core.deps import get_current_user
 from typing import Literal
@@ -59,6 +59,8 @@ class MedicationToday(BaseModel):
     frequencyPerDay: int
     takenSlots: list[bool]
     taken: bool
+    startDate: date
+    endDate: date | None = None
 
 @router.get("/{petId}/medications/today", response_model=list[MedicationToday])
 async def get_today_medications(petId: str, user_id: str = Depends(get_current_user)):
@@ -68,6 +70,8 @@ async def get_today_medications(petId: str, user_id: str = Depends(get_current_u
     cursor = db.medications.find({"petId": ObjectId(petId)})
     result = []
     async for doc in cursor:
+        if not is_medication_active(doc, today):
+            continue
         slots = today_slots(doc, today)
         result.append(
             MedicationToday(
@@ -77,6 +81,8 @@ async def get_today_medications(petId: str, user_id: str = Depends(get_current_u
                 frequencyPerDay=doc["frequencyPerDay"],
                 takenSlots=slots,
                 taken=all(slots) if slots else False,
+                startDate=doc["startDate"].date(),
+                endDate=doc["endDate"].date() if doc.get("endDate") else None,
             )
         )
     return result
@@ -97,13 +103,12 @@ async def get_medications_calendar(
     db = get_database()
     await get_owned_pet(db, petId, user_id)
     medications = [doc async for doc in db.medications.find({"petId": ObjectId(petId)})]
-    total = sum(med["frequencyPerDay"] for med in medications)
 
     taken_counts = defaultdict(int)
     for med in medications:
         for entry in med.get("doseLog", []):
             entry_date = entry["date"].date()
-            if entry_date.year == year and entry_date.month == mon:
+            if entry_date.year == year and entry_date.month == mon and is_medication_active(med, entry_date):
                 taken_counts[entry_date.day] += sum(1 for slot in entry.get("slots", []) if slot)
 
     today = date.today()
@@ -112,6 +117,9 @@ async def get_medications_calendar(
         day = month_start + timedelta(days=offset)
         if day > today:
             break
+        total = sum(med["frequencyPerDay"] for med in medications if is_medication_active(med, day))
+        if total == 0:
+            continue
         result.append(DayMedicationSummary(date=day, taken=taken_counts[day.day], total=total))
     return result
 
@@ -165,24 +173,42 @@ def _validate_alert_times(value: list[str]) -> list[str]:
         raise ValueError("알림시간은 HH:mm 형식이어야 합니다")
     return value
 
+def _validate_period(start_date: date, end_date: date | None) -> None:
+    if end_date is not None and end_date < start_date:
+        raise ValueError("종료일은 시작일 이후여야 합니다")
+
 class MedicationCreate(BaseModel):
     title: str = Field(min_length=1)
     frequencyPerDay: int = Field(ge=1, le=5)
     alertTimes: list[str]
+    startDate: date
+    endDate: date | None = None
 
     @field_validator("alertTimes")
     @classmethod
     def validate_alert_times(cls, value: list[str]) -> list[str]:
         return _validate_alert_times(value)
+
+    @model_validator(mode="after")
+    def validate_period(self) -> "MedicationCreate":
+        _validate_period(self.startDate, self.endDate)
+        return self
 
 class MedicationUpdate(BaseModel):
     title: str = Field(min_length=1)
     alertTimes: list[str]
+    startDate: date
+    endDate: date | None = None
 
     @field_validator("alertTimes")
     @classmethod
     def validate_alert_times(cls, value: list[str]) -> list[str]:
         return _validate_alert_times(value)
+
+    @model_validator(mode="after")
+    def validate_period(self) -> "MedicationUpdate":
+        _validate_period(self.startDate, self.endDate)
+        return self
 
 @router.post("/{petId}/medications", response_model=MedicationOut, status_code=201)
 async def create_medication(petId: str, body: MedicationCreate, user_id: str = Depends(get_current_user)):
@@ -194,6 +220,8 @@ async def create_medication(petId: str, body: MedicationCreate, user_id: str = D
         "title": body.title,
         "frequencyPerDay": body.frequencyPerDay,
         "alertTimes": body.alertTimes,
+        "startDate": to_datetime(body.startDate),
+        "endDate": to_datetime(body.endDate) if body.endDate else None,
         "doseLog": [],
     }
     result = await db.medications.insert_one(doc)
@@ -209,7 +237,14 @@ async def update_medication(
 
     doc = await db.medications.find_one_and_update(
         {"_id": ObjectId(medicationId), "petId": ObjectId(petId)},
-        {"$set": {"title": body.title, "alertTimes": body.alertTimes}},
+        {
+            "$set": {
+                "title": body.title,
+                "alertTimes": body.alertTimes,
+                "startDate": to_datetime(body.startDate),
+                "endDate": to_datetime(body.endDate) if body.endDate else None,
+            }
+        },
         return_document=True,
     )
     if doc is None:
