@@ -25,6 +25,13 @@ def today_slots(med_doc: dict, today: date) -> list[bool]:
     return [False] * freq
 
 
+def is_medication_active(med_doc: dict, day: date) -> bool:
+    if day < med_doc["startDate"].date():
+        return False
+    end_date = med_doc.get("endDate")
+    return end_date is None or day <= end_date.date()
+
+
 async def get_owned_pet(db, petId: str, user_id: str) -> dict:
     pet = await db.pets.find_one({"_id": ObjectId(petId), "ownerId": ObjectId(user_id)})
     if pet is None:

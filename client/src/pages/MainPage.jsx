@@ -17,15 +17,15 @@ async function loadMainPageData(petId) {
     api.get(ENDPOINTS.PETS.MEDICATIONS_CALENDAR(petId), { params: { month: todayISO().slice(0, 7) } }),
   ])
   const weekDates = getWeekDates()
+  const today = todayISO()
   const totalDoses = dashboard.medicationsToday.reduce((sum, med) => sum + med.frequencyPerDay, 0)
-  const weekCalendar = weekDates.map(
-    (date) =>
-      calendar.find((entry) => entry.date === date) ?? {
-        date,
-        taken: 0,
-        total: totalDoses,
-      },
-  )
+  const weekCalendar = weekDates.map((date) => {
+    const found = calendar.find((entry) => entry.date === date)
+    if (found) return found
+    // 오늘 이전 날짜가 캘린더 응답에 없다는 건 그 날 활성화된 약이 없었다는 뜻(0/0 대신 빈칸 처리).
+    // 미래 날짜만 오늘 기준 활성 복약 수로 추정해 채운다.
+    return { date, taken: 0, total: date > today ? totalDoses : 0 }
+  })
   return { dashboard, weekCalendar }
 }
 
