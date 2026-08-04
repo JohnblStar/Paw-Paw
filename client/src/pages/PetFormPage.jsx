@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import PageLayout from '@/components/layout/PageLayout'
 import Card from '@/components/common/Card'
 import Modal from '@/components/common/Modal'
 import PetForm from '@/components/mypetsy/PetForm'
@@ -46,7 +45,7 @@ export default function PetFormPage() {
   }
 
   return (
-    <PageLayout>
+    <>
       <div className="mx-auto max-w-lg">
         <h1 className="mb-6 text-xl font-bold text-ink">
           {isEdit ? '반려동물 정보 수정' : '반려동물 등록'}
@@ -97,6 +96,6 @@ export default function PetFormPage() {
           </button>
         </div>
       </Modal>
-    </PageLayout>
+    </>
   )
 }

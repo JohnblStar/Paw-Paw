@@ -3,14 +3,26 @@ import RequireAuth from '@/components/RequireAuth'
 import { UserProvider } from '@/context/UserProvider'
 import { PetProvider } from '@/context/PetProvider'
 import { WeightProvider } from '@/context/WeightProvider'
+import Navbar from '@/components/layout/Navbar'
 
+// Navbar(와 그 안의 NotificationBell)를 라우트 전환과 무관하게 로그인 세션 내내 마운트된
+// 상태로 유지하기 위해, 페이지별 PageLayout이 아니라 이 공통 레이아웃에서 한 번만 렌더링한다
+// — 그래야 페이지 이동해도 알림 폴링/토스트 상태가 초기화되지 않는다.
 export default function AuthenticatedLayout() {
   return (
     <RequireAuth>
       <UserProvider>
         <PetProvider>
           <WeightProvider>
-            <Outlet />
+            <div className="relative flex min-h-dvh flex-col overflow-hidden bg-bg">
+              <div className="pointer-events-none absolute -right-40 -top-24 h-96 w-96 rounded-full bg-primary-mint/15 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-40 -left-24 h-96 w-96 rounded-full bg-primary-purple/15 blur-3xl" />
+
+              <Navbar />
+              <main className="relative mx-auto flex w-full max-w-7xl flex-1 flex-col px-6 py-8">
+                <Outlet />
+              </main>
+            </div>
           </WeightProvider>
         </PetProvider>
       </UserProvider>
