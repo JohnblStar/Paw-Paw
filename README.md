@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="client/src/assets/paw-paw-logo-readme.jpg" alt="Paw:Paw logo" width="160" />
+
 # 🐾 Paw:Paw
 
 ### 반려동물의 건강 데이터를 기록하고, AI 챗봇과 함께 관리하는 펫 헬스케어 웹 서비스
