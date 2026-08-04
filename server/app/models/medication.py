@@ -11,6 +11,8 @@ class MedicationOut(BaseModel):
     title: str
     frequencyPerDay: int
     alertTimes: list[str]
+    startDate: date
+    endDate: date | None = None
     doseLog: list[MedicationDoseLog] = []
 
     @classmethod
@@ -21,5 +23,7 @@ class MedicationOut(BaseModel):
             title=doc["title"],
             frequencyPerDay=doc["frequencyPerDay"],
             alertTimes=doc.get("alertTimes", []),
+            startDate=doc["startDate"].date(),
+            endDate=doc["endDate"].date() if doc.get("endDate") else None,
             doseLog=doc.get("doseLog", []),
         )

@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import PageLayout from '@/components/layout/PageLayout'
 import Card from '@/components/common/Card'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
 import LoadingPaws from '@/components/common/LoadingPaws'
@@ -13,15 +12,11 @@ export default function MyPetsyPage() {
   const { user } = useUser()
 
   if (isLoading) {
-    return (
-      <PageLayout>
-        <LoadingPaws />
-      </PageLayout>
-    )
+    return <LoadingPaws />
   }
 
   return (
-    <PageLayout>
+    <>
       <OwnerProfileCard user={user} />
 
       <h1 className="mb-1 text-xl font-bold text-ink">{user?.name}님의 반려동물</h1>
@@ -53,6 +48,6 @@ export default function MyPetsyPage() {
           </div>
         </Card>
       )}
-    </PageLayout>
+    </>
   )
 }

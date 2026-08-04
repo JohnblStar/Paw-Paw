@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import PageLayout from '@/components/layout/PageLayout'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
 import LoadingPaws from '@/components/common/LoadingPaws'
 import BasicInfoCard from '@/components/dashboard/BasicInfoCard'
@@ -55,11 +54,7 @@ function DashboardContent({ pet }) {
   }, [pet.id, ensureWeightEntries])
 
   if (!dashboardData) {
-    return (
-      <PageLayout>
-        <LoadingPaws />
-      </PageLayout>
-    )
+    return <LoadingPaws />
   }
 
   const weightEntries = weightEntriesByPetId[pet.id] ?? []
@@ -79,36 +74,34 @@ function DashboardContent({ pet }) {
   }
 
   return (
-    <PageLayout>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-        <div className="flex flex-col gap-6">
-          <BasicInfoCard pet={pet} />
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+      <div className="flex flex-col gap-6">
+        <BasicInfoCard pet={pet} />
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <TodayMedicationCard
-              petId={pet.id}
-              medications={dashboardData.medicationsToday}
-              onToggle={handleToggleMedication}
-              onSaved={refetch}
-            />
-            <VaccinationListCard petId={pet.id} vaccinations={dashboardData.schedules} onSaved={refetch} />
-          </div>
-
-          <WeightGraphCard petId={pet.id} data={graphPoints} entries={weightEntries} onSaved={refetch} />
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <MonthlyMedCalendarCard
-            viewMonth={viewMonth}
-            onMonthChange={setViewMonth}
-            monthData={monthCalendar}
-            todayMedications={dashboardData.medicationsToday}
-            onToggleToday={handleToggleMedication}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <TodayMedicationCard
+            petId={pet.id}
+            medications={dashboardData.medicationsToday}
+            onToggle={handleToggleMedication}
+            onSaved={refetch}
           />
-          <HealthNotesCard petId={pet.id} petName={pet.name} notes={pet.healthNotes} />
+          <VaccinationListCard petId={pet.id} vaccinations={dashboardData.schedules} onSaved={refetch} />
         </div>
+
+        <WeightGraphCard petId={pet.id} data={graphPoints} entries={weightEntries} onSaved={refetch} />
       </div>
-    </PageLayout>
+
+      <div className="flex flex-col gap-6">
+        <MonthlyMedCalendarCard
+          viewMonth={viewMonth}
+          onMonthChange={setViewMonth}
+          monthData={monthCalendar}
+          todayMedications={dashboardData.medicationsToday}
+          onToggleToday={handleToggleMedication}
+        />
+        <HealthNotesCard petId={pet.id} petName={pet.name} notes={pet.healthNotes} />
+      </div>
+    </div>
   )
 }
 
@@ -116,19 +109,11 @@ export default function Dashboard() {
   const { activePet, isLoading } = usePet()
 
   if (isLoading) {
-    return (
-      <PageLayout>
-        <LoadingPaws />
-      </PageLayout>
-    )
+    return <LoadingPaws />
   }
 
   if (!activePet) {
-    return (
-      <PageLayout>
-        <EmptyPetState />
-      </PageLayout>
-    )
+    return <EmptyPetState />
   }
 
   return <DashboardContent key={activePet.id} pet={activePet} />

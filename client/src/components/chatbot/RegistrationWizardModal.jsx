@@ -25,6 +25,8 @@ function emptyForm(initialType, petId) {
     title: '',
     frequencyPerDay: 1,
     alertTimes: [''],
+    startDate: todayISO(),
+    endDate: null,
     date: todayISO(),
   }
 }
@@ -94,13 +96,21 @@ export default function RegistrationWizardModal({ isOpen, onClose, initialType =
 
   const handleMedFrequencyNext = () => {
     const slotCount = Math.min(form.frequencyPerDay, 3)
-    setForm((prev) => ({ ...prev, alertTimes: Array.from({ length: slotCount }, () => '') }))
+    setForm((prev) => ({ ...prev, alertTimes: Array.from({ length: slotCount }, () => '09:00') }))
     goNext('med-times')
   }
 
   const handleMedTimesNext = () => {
-    if (form.alertTimes.some((t) => !t)) {
-      setError('알림시간을 모두 선택해주세요.')
+    goNext('med-period')
+  }
+
+  const handleMedPeriodNext = () => {
+    if (!form.startDate) {
+      setError('복용 시작일을 선택해주세요.')
+      return
+    }
+    if (form.endDate && form.endDate < form.startDate) {
+      setError('종료일은 시작일 이후여야 해요.')
       return
     }
     goNext('summary')
@@ -131,6 +141,8 @@ export default function RegistrationWizardModal({ isOpen, onClose, initialType =
           title: form.title.trim(),
           frequencyPerDay: form.frequencyPerDay,
           alertTimes: form.alertTimes,
+          startDate: form.startDate,
+          endDate: form.endDate,
         })
       } else {
         await api.post(ENDPOINTS.PETS.SCHEDULES(form.petId), {
@@ -223,6 +235,42 @@ export default function RegistrationWizardModal({ isOpen, onClose, initialType =
         </div>
       )}
 
+      {step === 'med-period' && (
+        <div className="flex flex-col gap-4">
+          <FormField label="복용 시작일" htmlFor="wizard-med-start">
+            <input
+              id="wizard-med-start"
+              type="date"
+              value={form.startDate}
+              onChange={(event) => setForm((prev) => ({ ...prev, startDate: event.target.value }))}
+              className={INPUT_CLASS}
+            />
+          </FormField>
+          <FormField label="복용 종료일">
+            <label className="mb-2 flex items-center gap-2 text-sm text-ink-secondary">
+              <input
+                type="checkbox"
+                checked={form.endDate === null}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, endDate: event.target.checked ? null : todayISO() }))
+                }
+              />
+              종료일 미정 (계속 복용)
+            </label>
+            {form.endDate !== null && (
+              <input
+                type="date"
+                value={form.endDate}
+                onChange={(event) => setForm((prev) => ({ ...prev, endDate: event.target.value }))}
+                className={INPUT_CLASS}
+              />
+            )}
+          </FormField>
+          {error && <ErrorText>{error}</ErrorText>}
+          <WizardActions onBack={goBack} onNext={handleMedPeriodNext} />
+        </div>
+      )}
+
       {step === 'sched-title' && (
         <div className="flex flex-col gap-4">
           <FormField label="항목명" htmlFor="wizard-sched-title">
@@ -263,9 +311,14 @@ export default function RegistrationWizardModal({ isOpen, onClose, initialType =
             <p className="mt-1 text-ink-secondary">{TYPE_LABEL[form.type]}</p>
             <p className="mt-2 font-semibold">{form.title}</p>
             {form.type === 'medication' ? (
-              <p className="mt-1 text-ink-secondary">
-                하루 {form.frequencyPerDay}회 · 알림 {form.alertTimes.join(', ')}
-              </p>
+              <>
+                <p className="mt-1 text-ink-secondary">
+                  하루 {form.frequencyPerDay}회 · 알림 {form.alertTimes.join(', ')}
+                </p>
+                <p className="mt-1 text-ink-secondary">
+                  {form.startDate} ~ {form.endDate ?? '계속 복용'}
+                </p>
+              </>
             ) : (
               <p className="mt-1 text-ink-secondary">{form.date}</p>
             )}

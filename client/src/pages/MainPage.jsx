@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import PageLayout from '@/components/layout/PageLayout'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
 import LoadingPaws from '@/components/common/LoadingPaws'
 import LeftWidget from '@/components/mainpage/LeftWidget'
@@ -18,15 +17,15 @@ async function loadMainPageData(petId) {
     api.get(ENDPOINTS.PETS.MEDICATIONS_CALENDAR(petId), { params: { month: todayISO().slice(0, 7) } }),
   ])
   const weekDates = getWeekDates()
+  const today = todayISO()
   const totalDoses = dashboard.medicationsToday.reduce((sum, med) => sum + med.frequencyPerDay, 0)
-  const weekCalendar = weekDates.map(
-    (date) =>
-      calendar.find((entry) => entry.date === date) ?? {
-        date,
-        taken: 0,
-        total: totalDoses,
-      },
-  )
+  const weekCalendar = weekDates.map((date) => {
+    const found = calendar.find((entry) => entry.date === date)
+    if (found) return found
+    // 오늘 이전 날짜가 캘린더 응답에 없다는 건 그 날 활성화된 약이 없었다는 뜻(0/0 대신 빈칸 처리).
+    // 미래 날짜만 오늘 기준 활성 복약 수로 추정해 채운다.
+    return { date, taken: 0, total: date > today ? totalDoses : 0 }
+  })
   return { dashboard, weekCalendar }
 }
 
@@ -49,11 +48,7 @@ function MainPageContent({ pet }) {
   }, [pet.id])
 
   if (!dashboardData) {
-    return (
-      <PageLayout>
-        <LoadingPaws />
-      </PageLayout>
-    )
+    return <LoadingPaws />
   }
 
   const upcomingDday = dashboardData.upcomingSchedule
@@ -75,30 +70,28 @@ function MainPageContent({ pet }) {
   })
 
   return (
-    <PageLayout>
-      <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center gap-10 pt-10 sm:pt-14">
-        <div className="text-center">
-          <p className="text-base text-ink-secondary">{today}</p>
-          <p className="mt-1 text-4xl font-bold text-ink">{pet.name}와 함께하는 하루</p>
-        </div>
-
-        <div className="grid w-full grid-cols-1 items-center gap-6 lg:grid-cols-[340px_1fr_340px]">
-          <LeftWidget pet={pet} upcomingDday={upcomingDday} week={weekCalendar} />
-          <Mascot species={pet.species} />
-          <div className="flex justify-center lg:justify-start">
-            <SpeechBubble message={bubbleMessage} />
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => navigate('/dashboard')}
-          className="rounded-full border border-primary-mint-dark px-6 py-2 text-sm font-semibold text-primary-mint-dark transition-colors hover:bg-primary-mint hover:text-ink"
-        >
-          자세히 보기
-        </button>
+    <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center gap-10 pt-10 sm:pt-14">
+      <div className="text-center">
+        <p className="text-base text-ink-secondary">{today}</p>
+        <p className="mt-1 text-4xl font-bold text-ink">{pet.name}와 함께하는 하루</p>
       </div>
-    </PageLayout>
+
+      <div className="grid w-full grid-cols-1 items-center gap-6 lg:grid-cols-[340px_1fr_340px]">
+        <LeftWidget pet={pet} upcomingDday={upcomingDday} week={weekCalendar} />
+        <Mascot species={pet.species} />
+        <div className="flex justify-center lg:justify-start">
+          <SpeechBubble message={bubbleMessage} />
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => navigate('/dashboard')}
+        className="rounded-full border border-primary-mint-dark px-6 py-2 text-sm font-semibold text-primary-mint-dark transition-colors hover:bg-primary-mint hover:text-ink"
+      >
+        자세히 보기
+      </button>
+    </div>
   )
 }
 
@@ -106,19 +99,11 @@ export default function MainPage() {
   const { activePet, isLoading } = usePet()
 
   if (isLoading) {
-    return (
-      <PageLayout>
-        <LoadingPaws />
-      </PageLayout>
-    )
+    return <LoadingPaws />
   }
 
   if (!activePet) {
-    return (
-      <PageLayout>
-        <EmptyPetState />
-      </PageLayout>
-    )
+    return <EmptyPetState />
   }
 
   return <MainPageContent key={activePet.id} pet={activePet} />
