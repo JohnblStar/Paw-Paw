@@ -62,6 +62,7 @@ export default function NotificationBell() {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [isRinging, setIsRinging] = useState(false)
   const [toasts, setToasts] = useState([])
+  const [panelPosition, setPanelPosition] = useState(null)
   const containerRef = useRef(null)
   const panelRef = useRef(null)
   const seenIdsRef = useRef(null)
@@ -124,6 +125,18 @@ export default function NotificationBell() {
 
   useEffect(() => {
     if (!isPanelOpen) return
+    const updatePosition = () => {
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setPanelPosition({ top: rect.bottom + 8, right: window.innerWidth - rect.right })
+    }
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    return () => window.removeEventListener('resize', updatePosition)
+  }, [isPanelOpen])
+
+  useEffect(() => {
+    if (!isPanelOpen) return
     const handleClickOutside = (event) => {
       // 패널은 document.body에 포탈되어 containerRef의 DOM 하위가 아니므로 별도로 체크한다.
       const insideBell = containerRef.current?.contains(event.target)
@@ -172,10 +185,12 @@ export default function NotificationBell() {
       </button>
 
       {isPanelOpen &&
+        panelPosition &&
         createPortal(
           <div
             ref={panelRef}
-            className="fixed bottom-6 right-6 z-50 max-h-[70vh] w-80 overflow-y-auto rounded-2xl border border-border bg-white p-4 shadow-xl"
+            style={{ top: panelPosition.top, right: panelPosition.right }}
+            className="fixed z-50 max-h-[70vh] w-80 overflow-y-auto rounded-2xl border border-border bg-white p-4 shadow-xl"
           >
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-bold text-ink">알림</h2>
