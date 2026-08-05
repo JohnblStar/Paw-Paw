@@ -67,6 +67,7 @@ export default function MonthlyMedCalendarCard({ viewMonth, onMonthChange, month
 
           const clickable = Boolean(cell.data)
           const complete = cell.data && cell.data.taken === cell.data.total
+          const isFuture = cell.date > todayStr
 
           return (
             <button
@@ -82,7 +83,11 @@ export default function MonthlyMedCalendarCard({ viewMonth, onMonthChange, month
               {cell.data && (
                 <span
                   className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold ${
-                    complete ? 'bg-primary-mint text-ink' : 'bg-coral/15 text-coral'
+                    isFuture
+                      ? 'bg-bg text-ink-secondary/70'
+                      : complete
+                        ? 'bg-primary-mint text-ink'
+                        : 'bg-coral/15 text-coral'
                   }`}
                 >
                   {cell.data.taken}/{cell.data.total}
@@ -126,6 +131,11 @@ export default function MonthlyMedCalendarCard({ viewMonth, onMonthChange, month
               ))
             )}
           </ul>
+        ) : selectedDate > todayStr ? (
+          <p className="text-sm text-ink-secondary">
+            그 날 예정된 복약은 {selectedSummary?.total}개예요. 미래 날짜는 개별 내역을 미리 확인만 할 수
+            있어요.
+          </p>
         ) : (
           <p className="text-sm text-ink-secondary">
             그 날 복약 {selectedSummary?.taken}/{selectedSummary?.total}개 완료했어요. 지난 날짜의 개별 내역
