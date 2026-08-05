@@ -32,6 +32,7 @@ async function loadMainPageData(petId) {
 // pet.id로 키를 주어, 활성 반려동물이 바뀌면 이전 상태를 이어받지 않고 다시 마운트되도록 한다.
 function MainPageContent({ pet }) {
   const navigate = useNavigate()
+  const { applyPetUpdate } = usePet()
   const [dashboardData, setDashboardData] = useState(null)
   const [weekCalendar, setWeekCalendar] = useState([])
 
@@ -41,11 +42,13 @@ function MainPageContent({ pet }) {
       if (ignore) return
       setDashboardData(result.dashboard)
       setWeekCalendar(result.weekCalendar)
+      // 다른 화면에서 바뀐 체중/건강노트가 반영되도록 PetProvider 캐시도 같이 최신화한다.
+      applyPetUpdate(result.dashboard.pet)
     })
     return () => {
       ignore = true
     }
-  }, [pet.id])
+  }, [pet.id, applyPetUpdate])
 
   if (!dashboardData) {
     return <LoadingPaws />
