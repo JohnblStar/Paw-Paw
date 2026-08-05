@@ -111,12 +111,9 @@ async def get_medications_calendar(
             if entry_date.year == year and entry_date.month == mon and is_medication_active(med, entry_date):
                 taken_counts[entry_date.day] += sum(1 for slot in entry.get("slots", []) if slot)
 
-    today = today_kst()
     result = []
     for offset in range(last_day):
         day = month_start + timedelta(days=offset)
-        if day > today:
-            break
         total = sum(med["frequencyPerDay"] for med in medications if is_medication_active(med, day))
         if total == 0:
             continue
