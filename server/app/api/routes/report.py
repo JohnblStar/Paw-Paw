@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.database import get_database
 from app.core.deps import get_current_user
-from app.core.pet_helpers import age_years
+from app.core.pet_helpers import age_years, today_kst
 from app.models.breed_guide import BreedGuideFeedback
 from app.models.report import (
     DiagnosisOpinion,
@@ -240,7 +240,7 @@ async def get_monthly_report(
     last_day = monthrange(year, month)[1]
     month_start = date(year, month, 1)
     month_end = date(year, month, last_day)
-    reference_date = min(date.today(), month_end)
+    reference_date = min(today_kst(), month_end)
 
     # 주간 옵션은 표시 range(체중 비교 구간/증상 타임라인 필터)에만 영향을 준다.
     # 종합소견/케어가이드는 원래 설계대로 항상 전체 기간을 참고해 생성하므로(기간 무관 캐싱) 여기서는 건드리지 않는다.
