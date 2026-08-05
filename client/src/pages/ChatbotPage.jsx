@@ -21,7 +21,7 @@ const REGISTRATION_SUGGESTION_LABEL = {
 }
 
 export default function ChatbotPage() {
-  const { activePet, isLoading: isPetLoading } = usePet()
+  const { activePet, isLoading: isPetLoading, applyPetUpdate } = usePet()
   const [messages, setMessages] = useState([INTRO_MESSAGE])
   const [input, setInput] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -53,6 +53,9 @@ export default function ChatbotPage() {
 
     try {
       const data = await api.post(ENDPOINTS.CHAT.QUERY, { message })
+      // 새 건강 기록이 저장된 응답이면 대시보드/메인페이지가 새로고침 없이도 바로
+      // 최신 상태를 보여주도록 PetProvider 캐시를 즉시 동기화한다.
+      if (data.pet) applyPetUpdate(data.pet)
       setMessages((prev) => [
         ...prev,
         {

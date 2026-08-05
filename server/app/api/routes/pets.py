@@ -7,7 +7,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator, model_validator
 from app.core.database import get_database
-from app.core.pet_helpers import get_owned_pet, is_medication_active, today_slots, to_datetime
+from app.core.pet_helpers import get_owned_pet, is_medication_active, today_kst, today_slots, to_datetime
 from app.models.pet import PetOut
 from app.core.deps import get_current_user
 from typing import Literal
@@ -39,7 +39,7 @@ async def get_monthly_weights(
     ).sort("date", 1)
     entries = {doc["date"].date(): doc["value"] async for doc in cursor}
 
-    today = date.today()
+    today = today_kst()
     prior_dates = [d for d in entries if d < month_start]
     last_value = entries[max(prior_dates)] if prior_dates else None
     result = []
@@ -66,7 +66,7 @@ class MedicationToday(BaseModel):
 async def get_today_medications(petId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
     await get_owned_pet(db, petId, user_id)
-    today = date.today()
+    today = today_kst()
     cursor = db.medications.find({"petId": ObjectId(petId)})
     result = []
     async for doc in cursor:
@@ -111,7 +111,7 @@ async def get_medications_calendar(
             if entry_date.year == year and entry_date.month == mon and is_medication_active(med, entry_date):
                 taken_counts[entry_date.day] += sum(1 for slot in entry.get("slots", []) if slot)
 
-    today = date.today()
+    today = today_kst()
     result = []
     for offset in range(last_day):
         day = month_start + timedelta(days=offset)
@@ -130,7 +130,7 @@ async def toggle_medication_check(
     db = get_database()
     await get_owned_pet(db, petId, user_id)
     medications = db.medications
-    today = date.today()
+    today = today_kst()
     today_dt = to_datetime(today)
 
     doc = await medications.find_one({"_id": ObjectId(medicationId), "petId": ObjectId(petId)})
@@ -267,7 +267,7 @@ class ScheduleDDay(BaseModel):
 
 async def get_upcoming_schedule_dday(petId: str) -> ScheduleDDay | None:
     db = get_database()
-    today = date.today()
+    today = today_kst()
     doc = await db.schedules.find_one(
         {"petId": ObjectId(petId), "date": {"$gte": to_datetime(today)}},
         sort=[("date", 1)],
@@ -294,7 +294,7 @@ async def get_dashboard(petId: str, user_id: str = Depends(get_current_user)):
     db = get_database()
     pet_doc = await get_owned_pet(db, petId, user_id)
 
-    today = date.today()
+    today = today_kst()
     window_start = today - timedelta(days=4)
     medications_today, upcoming_schedule, schedules = await asyncio.gather(
         get_today_medications(petId, user_id),
@@ -493,7 +493,7 @@ async def delete_weight_entry(petId: str, weightId: str, user_id: str = Depends(
 async def get_all_schedules(petId: str) -> list[ScheduleItem]:
     db = get_database()
     cursor = db.schedules.find(
-        {"petId": ObjectId(petId), "date": {"$gte": to_datetime(date.today())}}
+        {"petId": ObjectId(petId), "date": {"$gte": to_datetime(today_kst())}}
     ).sort("date", 1)
 
     return [

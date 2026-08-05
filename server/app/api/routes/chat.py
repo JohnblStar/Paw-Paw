@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.database import get_database
 from app.core.deps import get_current_user
-from app.core.pet_helpers import age_years, to_datetime
+from app.core.pet_helpers import age_years, today_kst, to_datetime
+from app.models.pet import PetOut
 from app.models.chat import (
     ChatQueryRequest,
     ChatQueryResponse,
@@ -161,22 +162,28 @@ async def chat_query(body: ChatQueryRequest, user_id: str = Depends(get_current_
     suspected_symptom = result.get("suspectedSymptom")
 
     detected_symptom = None
+    updated_pet = None
     # 캐시로 재사용된 응답은 이전 호출 때 이미 healthNotes에 기록되어 있으므로 중복 push하지 않는다.
     if is_detected and symptom_summary:
         area = _extract_area(symptom_summary)
         detected_symptom = DetectedSymptom(area=area, description=symptom_summary)
 
         if not cached_entry:
+            new_note = {
+                "id": str(ObjectId()),
+                "date": to_datetime(today_kst()),
+                "bodyPart": area or "기타",
+                "note": symptom_summary,
+                "suspectedSymptom": suspected_symptom,
+            }
             await db.pets.update_one(
                 {"_id": pet_doc["_id"]},
-                {"$push": {"healthNotes": {
-                    "id": str(ObjectId()),
-                    "date": to_datetime(date.today()),
-                    "bodyPart": area or "기타",
-                    "note": symptom_summary,
-                    "suspectedSymptom": suspected_symptom,
-                }}},
+                {"$push": {"healthNotes": new_note}},
             )
+            # 프론트가 이 응답만으로 PetProvider 캐시를 즉시 동기화할 수 있도록,
+            # 방금 push한 기록을 메모리상의 pet_doc에도 반영해서 함께 내려준다.
+            pet_doc.setdefault("healthNotes", []).append(new_note)
+            updated_pet = PetOut.from_mongo(pet_doc)
 
     return ChatQueryResponse(
         reply=result.get("answerText", ""),
@@ -184,6 +191,7 @@ async def chat_query(body: ChatQueryRequest, user_id: str = Depends(get_current_
         detectedSymptom=detected_symptom,
         suspectedSymptom=suspected_symptom,
         registrationSuggestion=registration_suggestion,
+        pet=updated_pet,
     )
 
 
@@ -201,7 +209,7 @@ async def chat_summary(user_id: str = Depends(get_current_user)):
     if pet_doc is None:
         raise HTTPException(status_code=404, detail="Pet not found")
 
-    today = date.today()
+    today = today_kst()
     today_notes = [n for n in pet_doc.get("healthNotes", []) if n["date"].date() == today]
 
     return ChatSummaryResponse(

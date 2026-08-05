@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.database import get_database
 from app.core.deps import get_current_user
-from app.core.pet_helpers import get_owned_pet, today_slots
+from app.core.pet_helpers import get_owned_pet, now_kst, today_kst, today_slots
 from app.models.notification import NotificationListOut, NotificationOut
 
 router = APIRouter(prefix="/api/v1/pets", tags=["notifications"])
@@ -18,7 +18,7 @@ SCHEDULE_DDAY_MILESTONES = {7, 1, 0}
 
 async def _build_due_notifications(db, pet_id: ObjectId, today: date) -> list[NotificationOut]:
     notifications: list[NotificationOut] = []
-    now_hhmm = datetime.now().strftime("%H:%M")
+    now_hhmm = now_kst().strftime("%H:%M")
 
     async for med in db.medications.find({"petId": pet_id}):
         alert_times = med.get("alertTimes", [])
@@ -67,7 +67,7 @@ async def get_notifications(petId: str, user_id: str = Depends(get_current_user)
     db = get_database()
     pet = await get_owned_pet(db, petId, user_id)
 
-    today = date.today()
+    today = today_kst()
     due = await _build_due_notifications(db, pet["_id"], today)
 
     read_ids = {
