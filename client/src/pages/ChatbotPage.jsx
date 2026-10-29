@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ArrowUp, HeartPulse, Plus, Sparkles } from 'lucide-react'
 import Card from '@/components/common/Card'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
 import LoadingPaws from '@/components/common/LoadingPaws'
@@ -8,7 +9,7 @@ import MarkdownText from '@/components/common/MarkdownText'
 import { usePet } from '@/context/usePet'
 import api from '@/api/instance'
 import { ENDPOINTS } from '@/api/endpoints'
-import { PRIMARY_BUTTON_CLASS } from '@/constants/formStyles'
+import IconChip from '@/components/common/IconChip'
 
 const INTRO_MESSAGE = {
   role: 'assistant',
@@ -120,15 +121,24 @@ function ChatbotContent({ activePet }) {
 
   return (
     <>
-      <Card className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col p-0">
-        <div ref={scrollBoxRef} className="flex-1 space-y-4 overflow-y-auto p-6">
+      <Card className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden p-0">
+        <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+          <IconChip icon={Sparkles} tone="purple" size="md" />
+          <div className="min-w-0">
+            <p className="text-[15px] font-bold tracking-tight text-ink">AI 건강 상담</p>
+            <p className="truncate text-xs text-ink-secondary">{activePet.name}의 기록을 참고해서 답해요</p>
+          </div>
+        </div>
+
+        <div ref={scrollBoxRef} className="flex-1 space-y-5 overflow-y-auto bg-surface-muted/40 px-4 py-6 sm:px-6">
           {messages.map((message, index) => (
-            <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div key={index} className={`flex items-end gap-2.5 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              {message.role === 'assistant' && <IconChip icon={Sparkles} tone="purple" size="sm" className="mb-0.5" />}
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                className={`max-w-[82%] px-4 py-3 text-sm leading-relaxed ${
                   message.role === 'user'
-                    ? 'bg-primary-mint text-ink'
-                    : 'border border-border bg-white text-ink'
+                    ? 'rounded-[1.25rem] rounded-br-md bg-ink text-white'
+                    : 'rounded-[1.25rem] rounded-bl-md border border-border bg-surface text-ink shadow-chip'
                 }`}
               >
                 {message.role === 'assistant' ? (
@@ -137,48 +147,67 @@ function ChatbotContent({ activePet }) {
                   <p className="whitespace-pre-wrap">{message.text}</p>
                 )}
                 {message.detectedSymptom && (
-                  <p className="mt-2 text-xs text-primary-purple">
-                    {activePet.name}의 건강 기록에 저장됐어요: {message.detectedSymptom.description}{' '}
-                    <button
-                      type="button"
-                      onClick={() => setIsSummaryOpen(true)}
-                      className="underline-offset-2 hover:underline"
-                    >
-                      요약 완료
-                    </button>
-                  </p>
+                  <div className="mt-3 flex items-start gap-2 rounded-xl bg-primary-purple-soft px-3 py-2 text-xs text-primary-purple-deep">
+                    <HeartPulse size={14} className="mt-px shrink-0" />
+                    <p>
+                      {activePet.name}의 건강 기록에 저장됐어요: {message.detectedSymptom.description}{' '}
+                      <button
+                        type="button"
+                        onClick={() => setIsSummaryOpen(true)}
+                        className="font-semibold underline underline-offset-2 hover:no-underline"
+                      >
+                        요약 완료
+                      </button>
+                    </p>
+                  </div>
                 )}
                 {message.registrationSuggestion && (
                   <button
                     type="button"
                     onClick={() => setWizardType(message.registrationSuggestion.type)}
-                    className="mt-2 rounded-full border border-primary-mint-dark px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-primary-mint"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary-mint-soft px-3 py-1.5 text-xs font-semibold text-primary-mint-deep transition-colors hover:bg-primary-mint"
                   >
+                    <Plus size={13} strokeWidth={2.5} />
                     {REGISTRATION_SUGGESTION_LABEL[message.registrationSuggestion.type]}
                   </button>
                 )}
               </div>
             </div>
           ))}
-          {isSending && <p className="text-xs text-ink-secondary">답변을 준비하고 있어요...</p>}
+          {isSending && (
+            <div className="flex items-end gap-2.5">
+              <IconChip icon={Sparkles} tone="purple" size="sm" className="mb-0.5" />
+              <div className="flex items-center gap-2 rounded-[1.25rem] rounded-bl-md border border-border bg-surface px-4 py-3 shadow-chip">
+                <span className="flex gap-1" aria-hidden="true">
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary-purple [animation-delay:-0.3s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary-purple [animation-delay:-0.15s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary-purple" />
+                </span>
+                <p className="text-xs text-ink-secondary">답변을 준비하고 있어요...</p>
+              </div>
+            </div>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex gap-2 border-t border-border p-4">
-          <input
-            type="text"
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder={`${activePet.name}의 건강에 대해 물어보세요`}
-            disabled={isSending}
-            className="min-w-0 flex-1 rounded-xl border border-border bg-bg px-4 py-2.5 text-sm text-ink focus:border-primary-mint-dark focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={isSending || !input.trim()}
-            className={`shrink-0 ${PRIMARY_BUTTON_CLASS}`}
-          >
-            보내기
-          </button>
+        <form onSubmit={handleSubmit} className="border-t border-border bg-surface p-3 sm:p-4">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-surface-muted/60 py-1.5 pl-5 pr-1.5 transition-colors focus-within:border-primary-mint-dark focus-within:bg-surface focus-within:ring-4 focus-within:ring-primary-mint-soft">
+            <input
+              type="text"
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder={`${activePet.name}의 건강에 대해 물어보세요`}
+              disabled={isSending}
+              className="min-w-0 flex-1 bg-transparent py-1.5 text-sm text-ink placeholder:text-muted focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={isSending || !input.trim()}
+              aria-label="보내기"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-white transition-all hover:bg-ink/85 active:scale-95 disabled:bg-border-strong"
+            >
+              <ArrowUp size={18} strokeWidth={2.5} />
+            </button>
+          </div>
         </form>
       </Card>
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Modal from '@/components/common/Modal'
 import FormField, { ErrorText } from '@/components/common/FormField'
 import ToggleButtonGroup from '@/components/mypetsy/ToggleButtonGroup'
@@ -249,6 +250,7 @@ export default function RegistrationWizardModal({ isOpen, onClose, initialType =
           <FormField label="복용 종료일">
             <label className="mb-2 flex items-center gap-2 text-sm text-ink-secondary">
               <input
+                className="h-4 w-4 accent-primary-mint-deep"
                 type="checkbox"
                 checked={form.endDate === null}
                 onChange={(event) =>
@@ -306,7 +308,7 @@ export default function RegistrationWizardModal({ isOpen, onClose, initialType =
 
       {step === 'summary' && (
         <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-border bg-bg p-4 text-sm text-ink">
+          <div className="rounded-2xl border border-border bg-surface-muted/70 p-4 text-sm text-ink">
             <p className="font-semibold">{selectedPet?.name}</p>
             <p className="mt-1 text-ink-secondary">{TYPE_LABEL[form.type]}</p>
             <p className="mt-2 font-semibold">{form.title}</p>
@@ -326,6 +328,7 @@ export default function RegistrationWizardModal({ isOpen, onClose, initialType =
           {error && <ErrorText>{error}</ErrorText>}
           <div className="flex justify-between gap-2">
             <button type="button" onClick={goBack} className={SECONDARY_BUTTON_CLASS}>
+              <ChevronLeft size={16} />
               수정
             </button>
             <button type="button" onClick={handleSave} disabled={isSaving} className={`flex-1 ${PRIMARY_BUTTON_CLASS}`}>
@@ -343,6 +346,7 @@ function WizardActions({ onBack, onNext }) {
     <div className="flex justify-between gap-2">
       {onBack ? (
         <button type="button" onClick={onBack} className={SECONDARY_BUTTON_CLASS}>
+          <ChevronLeft size={16} />
           뒤로
         </button>
       ) : (
@@ -350,6 +354,7 @@ function WizardActions({ onBack, onNext }) {
       )}
       <button type="button" onClick={onNext} className={PRIMARY_BUTTON_CLASS}>
         다음
+        <ChevronRight size={16} />
       </button>
     </div>
   )

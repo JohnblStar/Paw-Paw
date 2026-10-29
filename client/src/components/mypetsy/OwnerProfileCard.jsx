@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Pencil } from 'lucide-react'
 import Card from '@/components/common/Card'
-import { INPUT_CLASS } from '@/constants/formStyles'
+import { INPUT_CLASS, TEXT_ACTION_CLASS } from '@/constants/formStyles'
 import { useUser } from '@/context/useUser'
 
 // 카카오는 연령을 항상 제공하지 않아(선택 동의 항목), 마이펫이지에서 직접 입력/수정하게 한다.
@@ -30,7 +31,7 @@ export default function OwnerProfileCard({ user }) {
   return (
     <Card className="mb-6">
       <div className="flex items-center gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-mint text-xl font-bold text-ink">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-mint-soft text-xl font-bold text-primary-mint-deep ring-4 ring-surface-muted">
           {user?.profileImage ? (
             <img src={user.profileImage} alt={user.name} className="h-full w-full object-cover" />
           ) : (
@@ -38,7 +39,7 @@ export default function OwnerProfileCard({ user }) {
           )}
         </div>
         <div className="flex-1">
-          <p className="text-lg font-bold text-ink">{user?.name}</p>
+          <p className="text-xl font-extrabold tracking-tight text-ink">{user?.name}</p>
           {isEditing ? (
             <div className="mt-1.5 flex items-center gap-2">
               <input
@@ -54,7 +55,7 @@ export default function OwnerProfileCard({ user }) {
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="text-xs font-semibold text-primary-mint-dark hover:underline disabled:opacity-50"
+                className="rounded-full bg-ink px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-50"
               >
                 저장
               </button>
@@ -67,13 +68,14 @@ export default function OwnerProfileCard({ user }) {
               </button>
             </div>
           ) : (
-            <p className="mt-0.5 text-sm text-ink-secondary">
+            <p className="mt-1 flex items-center gap-2 text-sm text-ink-secondary">
               {user?.age != null ? `${user.age}세` : '연령 미입력'}
               <button
                 type="button"
                 onClick={startEdit}
-                className="ml-2 text-xs font-semibold text-primary-mint-dark hover:underline"
+                className={TEXT_ACTION_CLASS}
               >
+                <Pencil size={12} />
                 {user?.age != null ? '수정' : '입력하기'}
               </button>
             </p>

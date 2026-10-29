@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
+import { Pencil, Trash2 } from 'lucide-react'
 import Modal from '@/components/common/Modal'
 import FormField, { ErrorText } from '@/components/common/FormField'
 import { useWeight } from '@/context/useWeight'
-import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/constants/formStyles'
+import { INPUT_CLASS, PRIMARY_BUTTON_CLASS, TEXT_ACTION_CLASS, TEXT_DANGER_ACTION_CLASS } from '@/constants/formStyles'
 import { todayISO } from '@/utils/date'
 import { isValidWeight } from '@/utils/validation'
 
@@ -100,21 +101,24 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries, onSave
         </button>
       )}
 
-      <div className="mt-5 max-h-64 space-y-2 overflow-y-auto">
-        {sortedEntries.length === 0 && <p className="text-sm text-ink-secondary">기록이 없어요</p>}
+      <div className="mt-6 max-h-64 space-y-2 overflow-y-auto border-t border-border pt-4">
+        {sortedEntries.length === 0 && <p className="py-3 text-center text-sm text-ink-secondary">기록이 없어요</p>}
         {sortedEntries.map((entry) => (
           <div
             key={entry.id}
-            className="flex items-center justify-between rounded-xl border border-border px-3 py-2"
+            className={`flex items-center justify-between rounded-2xl border px-4 py-2.5 transition-colors ${
+              editingId === entry.id ? 'border-primary-mint-dark bg-primary-mint-soft' : 'border-border'
+            }`}
           >
-            <span className="text-sm text-ink">{entry.date}</span>
-            <span className="text-sm font-semibold text-ink">{entry.weight}kg</span>
+            <span className="text-sm text-ink-secondary">{entry.date}</span>
+            <span className="text-sm font-bold tabular-nums text-ink">{entry.weight}kg</span>
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => handleEditClick(entry)}
-                className="text-xs text-ink-secondary hover:text-ink"
+                className={TEXT_ACTION_CLASS}
               >
+                <Pencil size={12} />
                 수정
               </button>
               <button
@@ -124,8 +128,9 @@ export default function WeightLogModal({ isOpen, onClose, petId, entries, onSave
                     deleteWeightEntry(petId, entry.id).then(() => onSaved?.())
                   }
                 }}
-                className="text-xs text-coral hover:text-coral/80"
+                className={TEXT_DANGER_ACTION_CLASS}
               >
+                <Trash2 size={12} />
                 삭제
               </button>
             </div>

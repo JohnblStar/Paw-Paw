@@ -3,57 +3,15 @@ import { createPortal } from 'react-dom'
 import { usePet } from '@/context/usePet'
 import api from '@/api/instance'
 import { ENDPOINTS } from '@/api/endpoints'
+import { Bell as BellIcon, BellOff, Check as CheckIcon, Tablets as MedicationIcon, Syringe as ScheduleIcon, X as CloseIcon } from 'lucide-react'
 
 const POLL_INTERVAL_MS = 60000
 const TOAST_EXIT_MS = 300
 
-function BellIcon({ className = '' }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function MedicationIcon({ className = '' }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 8v8M8 12h8" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function ScheduleIcon({ className = '' }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M3 9h18M8 3v4M16 3v4" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function CloseIcon({ className = '' }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={className}>
-      <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function CheckIcon({ className = '' }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={className}>
-      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-const DEFAULT_TYPE_META = { accent: 'bg-coral', badge: 'bg-coral/15 text-coral', Icon: MedicationIcon }
+const DEFAULT_TYPE_META = { accent: 'bg-coral', badge: 'bg-coral-soft text-coral-deep', Icon: MedicationIcon }
 const TYPE_META = {
-  medication: { accent: 'bg-primary-mint-dark', badge: 'bg-primary-mint/20 text-primary-mint-dark', Icon: MedicationIcon },
-  schedule: { accent: 'bg-amber-dark', badge: 'bg-amber/30 text-amber-dark', Icon: ScheduleIcon },
+  medication: { accent: 'bg-primary-mint-dark', badge: 'bg-primary-mint-soft text-primary-mint-deep', Icon: MedicationIcon },
+  schedule: { accent: 'bg-amber-dark', badge: 'bg-amber-soft text-amber-deep', Icon: ScheduleIcon },
 }
 
 export default function NotificationBell() {
@@ -174,14 +132,16 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={() => setIsPanelOpen((prev) => !prev)}
-        className="relative rounded-full p-2 text-ink-secondary transition-colors hover:bg-border/50 hover:text-ink"
+        className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-surface-muted hover:text-ink ${
+          isPanelOpen ? 'bg-surface-muted text-ink' : 'text-ink-secondary'
+        }`}
         aria-label="알림"
       >
-        <BellIcon className={`origin-top ${isRinging ? 'animate-bell-ring' : ''}`} />
+        <BellIcon size={19} className={`origin-top ${isRinging ? 'animate-bell-ring' : ''}`} />
         {notifications.length > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center">
-            <span className="absolute inset-0 animate-ping rounded-full bg-coral opacity-75" />
-            <span className="relative flex h-4 min-w-4 items-center justify-center rounded-full bg-coral px-1 text-[10px] font-bold text-white">
+          <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center">
+            <span className="absolute inset-0 animate-ping rounded-full bg-coral opacity-60" />
+            <span className="relative flex h-4 min-w-4 items-center justify-center rounded-full bg-coral-deep px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-bg">
               {notifications.length}
             </span>
           </span>
@@ -194,22 +154,31 @@ export default function NotificationBell() {
           <div
             ref={panelRef}
             style={{ top: panelPosition.top, right: panelPosition.right }}
-            className="fixed z-50 max-h-[70vh] w-80 overflow-y-auto rounded-2xl border border-border bg-white p-4 shadow-xl"
+            className="fixed z-50 max-h-[70vh] w-[calc(100vw-2rem)] max-w-80 animate-modal-in overflow-y-auto rounded-3xl border border-border bg-surface p-4 shadow-pop"
           >
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-ink">알림</h2>
+            <div className="mb-3 flex items-center justify-between px-1">
+              <h2 className="flex items-center gap-2 text-sm font-bold text-ink">
+                알림
+                {notifications.length > 0 && (
+                  <span className="rounded-full bg-coral-soft px-2 py-0.5 text-[11px] font-bold tabular-nums text-coral-deep">
+                    {notifications.length}
+                  </span>
+                )}
+              </h2>
               <button
                 type="button"
                 onClick={() => setIsPanelOpen(false)}
                 aria-label="닫기"
-                className="rounded-full p-1 text-ink-secondary/70 transition-colors hover:bg-border/60 hover:text-ink"
+                className="rounded-full p-1.5 text-ink-secondary transition-colors hover:bg-surface-muted hover:text-ink"
               >
-                <CloseIcon />
+                <CloseIcon size={16} />
               </button>
             </div>
             {notifications.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-6 text-center">
-                <BellIcon className="text-muted" />
+              <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-muted text-muted">
+                  <BellOff size={20} />
+                </span>
                 <p className="text-sm text-ink-secondary">새 알림이 없어요</p>
               </div>
             ) : (
@@ -219,11 +188,11 @@ export default function NotificationBell() {
                   return (
                     <li
                       key={notification.id}
-                      className="relative flex items-start gap-3 overflow-hidden rounded-xl border border-border bg-bg/60 py-2.5 pl-4 pr-3 transition-colors hover:bg-bg"
+                      className="relative flex items-start gap-3 overflow-hidden rounded-2xl border border-border bg-surface py-3 pl-4 pr-3 transition-colors hover:bg-surface-muted/60"
                     >
                       <span className={`absolute inset-y-0 left-0 w-1 ${accent}`} />
-                      <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${badge}`}>
-                        <Icon />
+                      <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${badge}`}>
+                        <Icon size={16} />
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-ink">
@@ -236,9 +205,9 @@ export default function NotificationBell() {
                         type="button"
                         onClick={() => handleRead(notification)}
                         aria-label="읽음으로 표시"
-                        className="shrink-0 rounded-full p-1.5 text-ink-secondary/70 transition-colors hover:bg-primary-mint/25 hover:text-primary-mint-dark"
+                        className="shrink-0 rounded-full p-1.5 text-ink-secondary transition-colors hover:bg-primary-mint-soft hover:text-primary-mint-deep"
                       >
-                        <CheckIcon />
+                        <CheckIcon size={16} />
                       </button>
                     </li>
                   )
@@ -251,7 +220,7 @@ export default function NotificationBell() {
 
       {toasts.length > 0 &&
         createPortal(
-          <div className="fixed bottom-4 right-4 z-[100] flex w-72 flex-col gap-2 print:hidden">
+          <div className="fixed bottom-24 right-4 z-[100] flex w-[calc(100vw-2rem)] max-w-72 flex-col gap-2 md:bottom-4 print:hidden">
             {toasts.map((toast) => {
               const { accent, badge, Icon } = TYPE_META[toast.type] ?? DEFAULT_TYPE_META
               return (
@@ -263,13 +232,13 @@ export default function NotificationBell() {
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') handleToastClick(toast.toastId)
                   }}
-                  className={`relative flex cursor-pointer items-start gap-3 overflow-hidden rounded-2xl border border-border bg-white py-3.5 pl-5 pr-3 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl ${
+                  className={`relative flex cursor-pointer items-start gap-3 overflow-hidden rounded-2xl border border-border bg-surface py-3.5 pl-5 pr-3 shadow-pop transition-all duration-300 hover:-translate-y-0.5 ${
                     toast.leaving ? 'translate-y-1 opacity-0' : 'animate-toast-in opacity-100'
                   }`}
                 >
                   <span className={`absolute inset-y-0 left-0 w-1.5 ${accent}`} />
-                  <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${badge}`}>
-                    <Icon />
+                  <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${badge}`}>
+                    <Icon size={16} />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-ink">
@@ -285,9 +254,9 @@ export default function NotificationBell() {
                       dismissToast(toast.toastId)
                     }}
                     aria-label="닫기"
-                    className="shrink-0 rounded-full p-1 text-ink-secondary/70 transition-colors hover:bg-border/60 hover:text-ink"
+                    className="shrink-0 rounded-full p-1 text-ink-secondary transition-colors hover:bg-surface-muted hover:text-ink"
                   >
-                    <CloseIcon />
+                    <CloseIcon size={14} />
                   </button>
                 </div>
               )

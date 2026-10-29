@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import Card from '@/components/common/Card'
 import Modal from '@/components/common/Modal'
@@ -47,7 +48,7 @@ export default function PetFormPage() {
   return (
     <>
       <div className="mx-auto max-w-lg">
-        <h1 className="mb-6 text-xl font-bold text-ink">
+        <h1 className="mb-6 mt-2 text-2xl font-extrabold tracking-tight text-ink">
           {isEdit ? '반려동물 정보 수정' : '반려동물 등록'}
         </h1>
 
@@ -64,8 +65,9 @@ export default function PetFormPage() {
           <button
             type="button"
             onClick={() => setIsDeleteModalOpen(true)}
-            className="mt-4 w-full rounded-full border border-coral px-6 py-3 text-sm font-semibold text-coral transition-colors hover:bg-coral/10"
+            className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-coral/40 px-6 py-3 text-sm font-semibold text-coral-deep transition-colors hover:bg-coral-soft"
           >
+            <Trash2 size={15} />
             반려동물 삭제하기
           </button>
         )}
@@ -83,14 +85,14 @@ export default function PetFormPage() {
           <button
             type="button"
             onClick={() => setIsDeleteModalOpen(false)}
-            className="flex-1 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-ink-secondary hover:bg-bg"
+            className="flex-1 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-ink-secondary transition-colors hover:bg-surface-muted"
           >
             취소
           </button>
           <button
             type="button"
             onClick={handleDelete}
-            className="flex-1 rounded-full bg-coral px-4 py-2.5 text-sm font-semibold text-white hover:bg-coral/90"
+            className="flex-1 rounded-full bg-coral-deep px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-coral-deep/90"
           >
             삭제
           </button>
