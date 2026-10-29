@@ -73,10 +73,14 @@ function DashboardContent({ pet }) {
   }
 
   const handleToggleMedication = async (medicationId, slotIndex) => {
-    await api.patch(ENDPOINTS.PETS.MEDICATION_CHECK(pet.id, medicationId), null, {
-      params: { slotIndex },
-    })
-    refetch()
+    try {
+      await api.patch(ENDPOINTS.PETS.MEDICATION_CHECK(pet.id, medicationId), null, {
+        params: { slotIndex },
+      })
+    } finally {
+      // 응답이 실패해도 서버에 반영됐을 수 있으므로 항상 최신 상태로 다시 맞춘다.
+      refetch()
+    }
   }
 
   return (

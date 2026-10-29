@@ -158,6 +158,8 @@ async def toggle_medication_check(
         frequencyPerDay=freq,
         takenSlots=slots,
         taken=all(slots),
+        startDate=doc["startDate"].date(),
+        endDate=doc["endDate"].date() if doc.get("endDate") else None,
     )
 
 ALERT_TIME_PATTERN = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")

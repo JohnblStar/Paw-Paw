@@ -58,6 +58,9 @@ const TYPE_META = {
 
 export default function NotificationBell() {
   const { activePet } = usePet()
+  // activePet 객체는 대시보드 갱신 때마다 새로 만들어지므로 id에만 의존한다 —
+  // 객체 자체에 의존하면 갱신될 때마다 안 읽은 알림이 토스트로 중복 표시된다.
+  const activePetId = activePet?.id
   const [notifications, setNotifications] = useState([])
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [isRinging, setIsRinging] = useState(false)
@@ -82,13 +85,13 @@ export default function NotificationBell() {
   }, [])
 
   useEffect(() => {
-    if (!activePet) return
+    if (!activePetId) return
     let ignore = false
     seenIdsRef.current = null
 
     const fetchNotifications = () => {
       api
-        .get(ENDPOINTS.PETS.NOTIFICATIONS(activePet.id))
+        .get(ENDPOINTS.PETS.NOTIFICATIONS(activePetId))
         .then((data) => {
           if (ignore) return
           const nextIds = new Set(data.notifications.map((n) => n.id))
@@ -115,7 +118,7 @@ export default function NotificationBell() {
       ignore = true
       clearInterval(interval)
     }
-  }, [activePet, addToast])
+  }, [activePetId, addToast])
 
   useEffect(() => {
     if (!isRinging) return
