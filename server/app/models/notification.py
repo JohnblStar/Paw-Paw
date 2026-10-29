@@ -9,6 +9,9 @@ class NotificationOut(BaseModel):
     title: str
     message: str
     date: date
+    # 전체 반려동물 통합 조회(GET /api/v1/notifications)에서만 채워진다 — 어느 아이의 알림인지 구분용
+    petId: str | None = None
+    petName: str | None = None
 
 
 class NotificationListOut(BaseModel):

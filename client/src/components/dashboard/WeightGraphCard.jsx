@@ -3,7 +3,7 @@ import Card from '@/components/common/Card'
 import WeightLineChart from '@/components/common/WeightLineChart'
 import WeightLogModal from '@/components/dashboard/WeightLogModal'
 
-export default function WeightGraphCard({ petId, data, entries, onSaved }) {
+export default function WeightGraphCard({ petId, data, entries, standardRange, onSaved }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   return (
@@ -19,7 +19,7 @@ export default function WeightGraphCard({ petId, data, entries, onSaved }) {
         </button>
       }
     >
-      <WeightLineChart points={data} />
+      <WeightLineChart points={data} standardRange={standardRange} />
 
       <WeightLogModal
         isOpen={isModalOpen}

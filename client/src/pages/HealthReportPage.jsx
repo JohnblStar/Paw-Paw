@@ -23,12 +23,35 @@ function splitReportSections(reportText) {
     })
 }
 
+function formatKg(value) {
+  return value == null ? '-' : `${value}kg`
+}
+
+function shiftYearMonth({ year, month }, delta) {
+  const d = new Date(year, month - 1 + delta, 1)
+  return { year: d.getFullYear(), month: d.getMonth() + 1 }
+}
+
+function compareYearMonth(a, b) {
+  return a.year * 12 + a.month - (b.year * 12 + b.month)
+}
+
 async function loadReport(petId, year, month, period) {
   return api.get(ENDPOINTS.PETS.REPORT_MONTHLY(petId), { params: { year, month, period } })
 }
 
 // pet.id로 키를 주어, 활성 반려동물이 바뀌면 이전 레포트 state를 이어받지 않고 다시 마운트되도록 한다.
-function HealthReportContent({ pet, year, month }) {
+function HealthReportContent({ pet }) {
+  const now = new Date()
+  const currentYearMonth = { year: now.getFullYear(), month: now.getMonth() + 1 }
+  // 등록 이전 달은 데이터가 없어 LLM 호출만 낭비되므로 서버와 같은 하한을 둔다.
+  const createdYearMonth = pet.createdAt
+    ? { year: Number(pet.createdAt.slice(0, 4)), month: Number(pet.createdAt.slice(5, 7)) }
+    : currentYearMonth
+  const [viewYearMonth, setViewYearMonth] = useState(currentYearMonth)
+  const { year, month } = viewYearMonth
+  const isCurrentMonth = compareYearMonth(viewYearMonth, currentYearMonth) === 0
+  const canGoPrev = compareYearMonth(viewYearMonth, createdYearMonth) > 0
   const [period, setPeriod] = useState('month')
   const [report, setReport] = useState(null)
   const [error, setError] = useState(null)
@@ -59,17 +82,53 @@ function HealthReportContent({ pet, year, month }) {
 
   const isLoading = !report && !error
 
+  const moveMonth = (delta) => {
+    setReport(null)
+    setError(null)
+    // 주간 보기는 이번 달에만 의미가 있으므로 다른 달로 이동하면 월간으로 되돌린다.
+    if (delta !== 0) setPeriod('month')
+    setViewYearMonth((prev) => shiftYearMonth(prev, delta))
+  }
+
+  const handlePeriodChange = (next) => {
+    setReport(null)
+    setError(null)
+    setPeriod(next)
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-ink">
-              {pet.name}의 {year}년 {month}월 건강 레포트
-            </h1>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => moveMonth(-1)}
+                disabled={!canGoPrev || isLoading}
+                aria-label="이전 달"
+                className="rounded-full px-2 py-1 text-ink-secondary transition-colors hover:bg-border/50 hover:text-ink disabled:opacity-30 print:hidden"
+              >
+                ‹
+              </button>
+              <h1 className="text-xl font-bold text-ink">
+                {pet.name}의 {year}년 {month}월 건강 레포트
+              </h1>
+              <button
+                type="button"
+                onClick={() => moveMonth(1)}
+                disabled={isCurrentMonth || isLoading}
+                aria-label="다음 달"
+                className="rounded-full px-2 py-1 text-ink-secondary transition-colors hover:bg-border/50 hover:text-ink disabled:opacity-30 print:hidden"
+              >
+                ›
+              </button>
+            </div>
             <p className="text-sm text-ink-secondary">AI가 체중·복약·증상 기록을 종합해 정리했어요</p>
           </div>
-          <div className="flex items-center gap-2">
-            <ToggleButtonGroup options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
+          <div className="flex items-center gap-2 print:hidden">
+            {isCurrentMonth && (
+              <ToggleButtonGroup options={PERIOD_OPTIONS} value={period} onChange={handlePeriodChange} />
+            )}
             <button
               type="button"
               onClick={handleRefresh}
@@ -77,6 +136,14 @@ function HealthReportContent({ pet, year, month }) {
               className="shrink-0 rounded-full border border-border px-4 py-2 text-xs font-semibold text-ink-secondary transition-colors hover:border-primary-mint-dark hover:text-ink disabled:opacity-50"
             >
               새로고침
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              disabled={!report}
+              className="shrink-0 rounded-full border border-border px-4 py-2 text-xs font-semibold text-ink-secondary transition-colors hover:border-primary-mint-dark hover:text-ink disabled:opacity-50"
+            >
+              인쇄·PDF
             </button>
           </div>
         </div>
@@ -102,30 +169,53 @@ function HealthReportContent({ pet, year, month }) {
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div>
                   <p className="text-xs text-ink-secondary">
-                    {report.period === 'week' ? '이번 주 시작' : '이번 달 시작'}
+                    {report.period === 'week' ? '이번 주 시작' : isCurrentMonth ? '이번 달 시작' : `${month}월 초`}
                   </p>
                   <p className="text-sm font-semibold text-ink">
-                    {report.weightChange.thisMonthStart ?? '-'}kg
+                    {formatKg(report.weightChange.thisMonthStart)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-ink-secondary">현재</p>
-                  <p className="text-sm font-semibold text-ink">{report.weightChange.current ?? '-'}kg</p>
+                  <p className="text-xs text-ink-secondary">{isCurrentMonth ? '현재' : `${month}월 말`}</p>
+                  <p className="text-sm font-semibold text-ink">{formatKg(report.weightChange.current)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-ink-secondary">
                     {report.period === 'week' ? '1주 전' : '한 달 전'}
                   </p>
                   <p className="text-sm font-semibold text-ink">
-                    {report.weightChange.oneMonthAgo ?? '-'}kg
+                    {formatKg(report.weightChange.oneMonthAgo)}
                   </p>
                 </div>
               </div>
               <p className="mt-3 text-sm text-ink-secondary">{report.weightChange.analysisMessage}</p>
             </Card>
 
+            {report.medicationAdherence?.length > 0 && (
+              <Card title={report.period === 'week' ? '이번 주 복용률' : `${month}월 복용률`}>
+                <p className="mb-3 text-sm text-ink">
+                  전체 <span className="font-bold">{report.overallAdherenceRate}%</span> 챙겨 먹었어요
+                </p>
+                <ul className="flex flex-col gap-2.5">
+                  {report.medicationAdherence.map((item) => (
+                    <li key={item.title} className="text-sm">
+                      <div className="mb-1 flex justify-between">
+                        <span className="text-ink">{item.title}</span>
+                        <span className={item.taken < item.expected ? 'text-coral' : 'text-ink'}>
+                          {item.taken}/{item.expected}회 · {item.rate}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-border">
+                        <div className="h-full rounded-full bg-primary-mint-dark" style={{ width: `${item.rate}%` }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+
             {report.monthlySymptomFrequency.length > 0 && (
-              <Card title={report.period === 'week' ? '이번 주 증상 타임라인' : '이번 달 증상 타임라인'}>
+              <Card title={report.period === 'week' ? '이번 주 증상 타임라인' : `${month}월 증상 타임라인`}>
                 <ul className="flex flex-col gap-2">
                   {report.monthlySymptomFrequency.map((item, index) => (
                     <li key={index} className="flex gap-3 text-sm">
@@ -176,8 +266,5 @@ export default function HealthReportPage() {
     return <EmptyPetState />
   }
 
-  const now = new Date()
-  return (
-    <HealthReportContent key={activePet.id} pet={activePet} year={now.getFullYear()} month={now.getMonth() + 1} />
-  )
+  return <HealthReportContent key={activePet.id} pet={activePet} />
 }

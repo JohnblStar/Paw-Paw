@@ -24,7 +24,7 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-bg/90 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b print:hidden border-border bg-bg/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-6 py-3">
         <Link to="/main" className="flex items-baseline gap-2 whitespace-nowrap">
           <span className="text-xl font-bold text-ink">Paw</span>

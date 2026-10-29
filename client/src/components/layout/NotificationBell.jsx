@@ -58,6 +58,9 @@ const TYPE_META = {
 
 export default function NotificationBell() {
   const { activePet } = usePet()
+  // activePet 객체는 대시보드 갱신 때마다 새로 만들어지므로 id에만 의존한다 —
+  // 객체 자체에 의존하면 갱신될 때마다 안 읽은 알림이 토스트로 중복 표시된다.
+  const activePetId = activePet?.id
   const [notifications, setNotifications] = useState([])
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [isRinging, setIsRinging] = useState(false)
@@ -82,13 +85,14 @@ export default function NotificationBell() {
   }, [])
 
   useEffect(() => {
-    if (!activePet) return
+    if (!activePetId) return
     let ignore = false
     seenIdsRef.current = null
 
     const fetchNotifications = () => {
       api
-        .get(ENDPOINTS.PETS.NOTIFICATIONS(activePet.id))
+        // 활성 펫만이 아니라 모든 반려동물의 알림을 한 번에 받는다 — 활성 펫을 바꾸지 않아도 다른 아이의 복약을 놓치지 않게.
+        .get(ENDPOINTS.NOTIFICATIONS.ALL)
         .then((data) => {
           if (ignore) return
           const nextIds = new Set(data.notifications.map((n) => n.id))
@@ -115,7 +119,7 @@ export default function NotificationBell() {
       ignore = true
       clearInterval(interval)
     }
-  }, [activePet, addToast])
+  }, [activePetId, addToast])
 
   useEffect(() => {
     if (!isRinging) return
@@ -156,10 +160,10 @@ export default function NotificationBell() {
     setIsPanelOpen(true)
   }
 
-  const handleRead = async (notificationId) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== notificationId))
+  const handleRead = async (notification) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== notification.id))
     try {
-      await api.patch(ENDPOINTS.PETS.NOTIFICATION_READ(activePet.id, notificationId))
+      await api.patch(ENDPOINTS.PETS.NOTIFICATION_READ(notification.petId ?? activePet.id, notification.id))
     } catch {
       // 실패해도 다음 폴링에서 다시 나타날 뿐이라 조용히 무시
     }
@@ -222,12 +226,15 @@ export default function NotificationBell() {
                         <Icon />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-ink">{notification.title}</p>
+                        <p className="text-sm font-semibold text-ink">
+                          {notification.petName && <span className="text-ink-secondary">[{notification.petName}] </span>}
+                          {notification.title}
+                        </p>
                         <p className="text-xs text-ink-secondary">{notification.message}</p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleRead(notification.id)}
+                        onClick={() => handleRead(notification)}
                         aria-label="읽음으로 표시"
                         className="shrink-0 rounded-full p-1.5 text-ink-secondary/70 transition-colors hover:bg-primary-mint/25 hover:text-primary-mint-dark"
                       >
@@ -244,7 +251,7 @@ export default function NotificationBell() {
 
       {toasts.length > 0 &&
         createPortal(
-          <div className="fixed bottom-4 right-4 z-[100] flex w-72 flex-col gap-2">
+          <div className="fixed bottom-4 right-4 z-[100] flex w-72 flex-col gap-2 print:hidden">
             {toasts.map((toast) => {
               const { accent, badge, Icon } = TYPE_META[toast.type] ?? DEFAULT_TYPE_META
               return (
@@ -265,7 +272,10 @@ export default function NotificationBell() {
                     <Icon />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-ink">{toast.title}</p>
+                    <p className="text-sm font-semibold text-ink">
+                      {toast.petName && <span className="text-ink-secondary">[{toast.petName}] </span>}
+                      {toast.title}
+                    </p>
                     <p className="mt-0.5 text-xs text-ink-secondary">{toast.message}</p>
                   </div>
                   <button
