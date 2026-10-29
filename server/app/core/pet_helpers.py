@@ -12,7 +12,7 @@ def to_datetime(d: date) -> datetime:
 
 
 def now_kst() -> datetime:
-    # 배포 서버(Railway 등)는 보통 UTC로 돈다. "오늘"/"지금"은 항상 사용자 기준(한국 시간)이어야
+    # 배포 서버(Render 등)는 보통 UTC로 돈다. "오늘"/"지금"은 항상 사용자 기준(한국 시간)이어야
     # 알림 발송 시각·날짜 경계가 실제와 어긋나지 않는다 (naive date.today()/datetime.now() 금지).
     return datetime.now(KST)
 
