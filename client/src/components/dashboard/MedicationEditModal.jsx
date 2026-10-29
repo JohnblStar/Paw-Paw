@@ -86,6 +86,7 @@ export default function MedicationEditModal({ isOpen, onClose, petId, medication
         <FormField label="복용 종료일">
           <label className="mb-2 flex items-center gap-2 text-sm text-ink-secondary">
             <input
+              className="h-4 w-4 accent-primary-mint-deep"
               type="checkbox"
               checked={endDate === null}
               onChange={(event) => setEndDate(event.target.checked ? null : startDate)}

@@ -1,9 +1,16 @@
-export default function Card({ title, action, children, className = '' }) {
+import IconChip from '@/components/common/IconChip'
+
+export default function Card({ title, action, icon, tone = 'neutral', children, className = '' }) {
   return (
-    <div className={`rounded-3xl border border-border bg-white p-6 ${className}`}>
+    <div className={`rounded-3xl border border-border bg-surface p-6 shadow-card ${className}`}>
       {(title || action) && (
-        <div className="mb-4 flex items-center justify-between">
-          {title && <h2 className="text-base font-bold text-ink">{title}</h2>}
+        <div className="mb-5 flex items-center justify-between gap-3">
+          {title && (
+            <div className="flex min-w-0 items-center gap-2.5">
+              {icon && <IconChip icon={icon} tone={tone} size="sm" />}
+              <h2 className="truncate text-[15px] font-bold tracking-tight text-ink">{title}</h2>
+            </div>
+          )}
           {action}
         </div>
       )}

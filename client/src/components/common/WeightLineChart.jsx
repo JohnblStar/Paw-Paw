@@ -1,11 +1,16 @@
+import { useId } from 'react'
+
 const VIEW_WIDTH = 560
 const VIEW_HEIGHT = 200
 const PADDING = { top: 24, right: 16, bottom: 45, left: 32 }
 
 // standardRange: 품종 적정 체중 범위 {min, max} — 품종 가이드에 값이 있을 때만 배경 띠로 표시한다.
 export default function WeightLineChart({ points, standardRange = null }) {
+  // SVG url(#id) 참조에 안전한 문자만 남긴다 (useId 결과에는 콜론 등 특수문자가 들어간다)
+  const gradientId = `weight-area-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
+
   if (!points || points.length === 0) {
-    return <p className="text-sm text-ink-secondary">체중 기록이 없어요</p>
+    return <p className="rounded-2xl bg-surface-muted/70 px-4 py-5 text-center text-sm text-ink-secondary">체중 기록이 없어요</p>
   }
 
   const weights = points.map((point) => point.weight)
@@ -26,10 +31,18 @@ export default function WeightLineChart({ points, standardRange = null }) {
   })
 
   const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ')
+  const chartBottom = PADDING.top + chartHeight
+  const areaPath = `${linePath} L ${coords[coords.length - 1].x} ${chartBottom} L ${coords[0].x} ${chartBottom} Z`
   const labelStep = Math.max(Math.ceil(points.length / 6), 1)
 
   return (
     <svg viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`} className="w-full" role="img" aria-label="체중 변화 그래프">
+      <defs>
+        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="var(--color-primary-mint-dark)" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="var(--color-primary-mint-dark)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
       {[0, 0.5, 1].map((ratio) => (
         <line
           key={ratio}
@@ -39,6 +52,7 @@ export default function WeightLineChart({ points, standardRange = null }) {
           y2={PADDING.top + ratio * chartHeight}
           stroke="var(--color-border)"
           strokeWidth="1"
+          strokeDasharray={ratio === 1 ? undefined : '3 4'}
         />
       ))}
 
@@ -52,13 +66,14 @@ export default function WeightLineChart({ points, standardRange = null }) {
             fill="var(--color-primary-mint)"
             opacity="0.18"
           />
-          <text x={PADDING.left + 4} y={toY(standardRange.max) + 11} textAnchor="start" className="fill-primary-mint-dark text-[9px]">
+          <text x={PADDING.left + 4} y={toY(standardRange.max) + 11} textAnchor="start" className="fill-primary-mint-deep text-[9px] font-semibold">
             품종 적정 {standardRange.min}~{standardRange.max}kg
           </text>
         </g>
       )}
 
-      <path d={linePath} fill="none" stroke="var(--color-primary-mint-dark)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={areaPath} fill={`url(#${gradientId})`} />
+      <path d={linePath} fill="none" stroke="var(--color-primary-mint-deep)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
 
       {coords.map((c, index) => {
         const prev = coords[index - 1]
@@ -69,12 +84,12 @@ export default function WeightLineChart({ points, standardRange = null }) {
 
         return (
           <g key={c.point.date}>
-            <circle cx={c.x} cy={c.y} r="4" fill="var(--color-primary-mint-dark)" />
+            <circle cx={c.x} cy={c.y} r="4.5" fill="var(--color-surface)" stroke="var(--color-primary-mint-deep)" strokeWidth="2.5" />
             <text
               x={c.x}
               y={labelY}
               textAnchor="middle"
-              className="fill-ink text-[10px] font-semibold"
+              className="fill-ink text-[10px] font-bold tabular-nums"
             >
               {c.point.weight}kg
             </text>
@@ -89,7 +104,7 @@ export default function WeightLineChart({ points, standardRange = null }) {
             x={c.x}
             y={VIEW_HEIGHT - 6}
             textAnchor="middle"
-            className="fill-ink-secondary text-[9px]"
+            className="fill-muted text-[9px] font-medium tabular-nums"
           >
             {c.point.date.slice(5).replace('-', '/')}
           </text>

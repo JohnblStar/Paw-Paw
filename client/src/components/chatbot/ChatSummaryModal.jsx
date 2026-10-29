@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { HeartPulse, Info, Sparkles } from 'lucide-react'
 import Modal from '@/components/common/Modal'
 import LoadingPaws from '@/components/common/LoadingPaws'
 import api from '@/api/instance'
@@ -31,11 +32,14 @@ export default function ChatSummaryModal({ isOpen, onClose }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={summary?.summaryTitle ?? '답변 요약'}>
       {isLoading && <LoadingPaws size={40} />}
-      {error && <p className="text-sm text-coral">{error}</p>}
+      {error && <p className="text-sm text-coral-deep">{error}</p>}
       {summary && (
         <div className="flex flex-col gap-4">
-          <div>
-            <p className="mb-1.5 text-sm font-semibold text-ink">기록된 증상</p>
+          <div className="rounded-2xl border border-border p-4">
+            <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-ink">
+              <HeartPulse size={15} className="text-primary-mint-deep" />
+              기록된 증상
+            </p>
             {summary.uploadedSymptoms.length === 0 ? (
               <p className="text-sm text-ink-secondary">오늘 기록된 증상이 없어요</p>
             ) : (
@@ -46,8 +50,11 @@ export default function ChatSummaryModal({ isOpen, onClose }) {
               </ul>
             )}
           </div>
-          <div>
-            <p className="mb-1.5 text-sm font-semibold text-ink">AI 의심 증상</p>
+          <div className="rounded-2xl border border-primary-purple/30 bg-primary-purple-soft/60 p-4">
+            <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary-purple-deep">
+              <Sparkles size={15} />
+              AI 의심 증상
+            </p>
             {summary.suspectedSymptoms.length === 0 ? (
               <p className="text-sm text-ink-secondary">의심 증상이 없어요</p>
             ) : (
@@ -58,7 +65,10 @@ export default function ChatSummaryModal({ isOpen, onClose }) {
               </ul>
             )}
           </div>
-          <p className="text-xs text-ink-secondary">{summary.notice}</p>
+          <p className="flex items-start gap-1.5 text-xs text-ink-secondary">
+            <Info size={13} className="mt-px shrink-0" />
+            {summary.notice}
+          </p>
         </div>
       )}
     </Modal>

@@ -14,16 +14,18 @@ export default function WeeklyMedCalendar({ week }) {
 
         return (
           <div key={day.date} className="flex flex-col items-center gap-1">
-            <span className="text-xs text-ink-secondary">{DAY_LABELS[index]}</span>
+            <span className={`text-xs ${day.date === todayStr ? 'font-bold text-ink' : 'text-ink-secondary'}`}>
+              {DAY_LABELS[index]}
+            </span>
             {hasMedication ? (
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${
                   isFuture
-                    ? 'bg-bg text-ink-secondary/70'
+                    ? 'bg-surface-muted text-muted'
                     : complete
                       ? 'bg-primary-mint text-ink'
-                      : 'bg-coral/15 text-coral'
-                }`}
+                      : 'bg-coral-soft text-coral-deep'
+                } ${day.date === todayStr ? 'ring-2 ring-ink/80 ring-offset-2 ring-offset-surface' : ''}`}
               >
                 {day.taken}/{day.total}
               </div>

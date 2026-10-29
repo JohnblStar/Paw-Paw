@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 import EmptyPetState from '@/components/mainpage/EmptyPetState'
 import LoadingPaws from '@/components/common/LoadingPaws'
 import LeftWidget from '@/components/mainpage/LeftWidget'
@@ -69,10 +70,12 @@ function MainPageContent({ pet }) {
   })
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center gap-10 pt-10 sm:pt-14">
+    <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center gap-10 pt-6 sm:pt-12">
       <div className="text-center">
-        <p className="text-base text-ink-secondary">{today}</p>
-        <p className="mt-1 text-4xl font-bold text-ink">{pet.name}와 함께하는 하루</p>
+        <p className="inline-flex items-center rounded-full border border-border bg-surface/70 px-3 py-1 text-xs font-medium text-ink-secondary">
+          {today}
+        </p>
+        <p className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-[2.6rem]">{pet.name}와 함께하는 하루</p>
       </div>
 
       <div className="grid w-full grid-cols-1 items-center gap-6 lg:grid-cols-[340px_1fr_340px]">
@@ -86,9 +89,10 @@ function MainPageContent({ pet }) {
       <button
         type="button"
         onClick={() => navigate('/dashboard')}
-        className="rounded-full border border-primary-mint-dark px-6 py-2 text-sm font-semibold text-primary-mint-dark transition-colors hover:bg-primary-mint hover:text-ink"
+        className="group inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white shadow-chip transition-all hover:bg-ink/85 active:scale-[0.98]"
       >
         자세히 보기
+        <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
       </button>
     </div>
   )
