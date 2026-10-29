@@ -2,13 +2,13 @@ import KakaoLoginButton from './KakaoLoginButton'
 
 function LoginCard() {
   return (
-    <div className="flex flex-col items-center gap-7 rounded-3xl border border-border bg-white p-10 shadow-sm sm:p-12">
+    <div className="flex flex-col items-center gap-7 rounded-[2rem] border border-border bg-surface p-8 shadow-pop sm:p-12">
       <div className="text-center">
-        <h2 className="text-3xl font-bold">
+        <h2 className="text-3xl font-extrabold tracking-tight">
           <span className="text-ink">Paw</span>
           <span className="text-primary-purple">:Paw</span>
         </h2>
-        <p className="mt-2 text-sm text-ink-secondary">가입 절차 없이 카카오 계정으로 바로 시작해요</p>
+        <p className="mt-3 text-sm text-ink-secondary">가입 절차 없이 카카오 계정으로 바로 시작해요</p>
       </div>
 
       <KakaoLoginButton />

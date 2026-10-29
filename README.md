@@ -11,7 +11,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://mongodb.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com/)
-[![Railway](https://img.shields.io/badge/Railway-0B0D0E?style=flat-square&logo=railway&logoColor=white)](https://railway.app/)
+[![Render](https://img.shields.io/badge/Render-000000?style=flat-square&logo=render&logoColor=white)](https://render.com/)
 
 </div>
 
@@ -56,7 +56,7 @@
 | 인증 | Kakao 소셜 로그인 + JWT 세션 |
 | AI | 학교 제공 HAI-GPT (ChatGPT 계열 API) |
 | 알림 | 인앱 알림 (벨 아이콘, 복약·예방접종 전용) — 카카오톡 알림톡은 발신 대행사 계약이 필요해 범위 밖 |
-| 배포 | Vercel (Frontend), Railway (Backend) |
+| 배포 | Vercel (Frontend), Render (Backend) |
 
 ## 🖥 Getting Started
 
@@ -112,11 +112,20 @@ VITE_KAKAO_JS_KEY=
 ## 🚀 Deployment
 
 - **Frontend (Vercel)**: Root Directory를 `client`로 설정. `client/vercel.json`이 SPA 라우팅(새로고침 시 404 방지)을 처리한다. 환경변수는 위 client `.env` 항목 그대로 Vercel 프로젝트 설정에 등록.
-- **Backend (Railway)**: Root Directory를 `server`로 설정. `server/Procfile`이 시작 명령(`uvicorn main:app --host 0.0.0.0 --port $PORT`)을 지정한다. 환경변수는 위 server `.env` 항목을 그대로 등록하되, `FRONTEND_ORIGIN`은 배포된 Vercel 도메인으로 채워야 CORS가 통과한다.
+- **Backend (Render, Free 인스턴스)**: New → Web Service로 저장소를 연결하고 아래처럼 설정한다.
+  - Root Directory `server` / Branch `main`
+  - Build Command `pip install -r requirements.txt`
+  - Start Command `uvicorn main:app --host 0.0.0.0 --port $PORT` (Render는 `Procfile`을 읽지 않는다)
+  - Health Check Path `/health`
+  - 환경변수: 위 server `.env` 항목 전부 + `PYTHON_VERSION=3.12.3` (지정하지 않으면 Render 기본 버전으로 빌드되어 의존성이 검증되지 않은 버전에서 돈다). `FRONTEND_ORIGIN`은 배포된 Vercel 도메인으로 채워야 CORS가 통과한다.
+  - MongoDB Atlas Network Access에서 Render 접속을 허용해야 한다 (Free 인스턴스는 고정 IP가 없어 `0.0.0.0/0`).
+  - Free 인스턴스는 15분간 요청이 없으면 잠들고 다음 요청에서 깨어나는 데 약 1분이 걸린다 — 시연 전에 사이트를 한 번 열어 서버를 깨워둘 것.
+  - 백엔드 주소가 바뀌면 Vercel의 `VITE_API_URL`을 갱신하고 **재배포**해야 반영된다 (빌드 시점 변수).
 - **Kakao Developers 콘솔**: 배포된 프론트엔드 도메인의 `/login/kakao/callback`을 Redirect URI로 추가 등록해야 카카오 로그인이 동작한다.
 
 ## ⚠️ Known Limitations
 
+- **백엔드 콜드 스타트** — 무료 호스팅(Render Free)이라 15분 이상 요청이 없으면 첫 접속에 약 1분이 걸립니다.
 - **JWT를 `localStorage`에 저장** — 구현이 단순한 대신 XSS에 노출되면 토큰이 탈취될 수 있습니다. 실서비스라면 `HttpOnly` + `Secure` 쿠키와 CSRF 토큰 조합으로 바꿔야 합니다. 이 프로젝트는 포트폴리오/시연용이라 현재 방식을 유지합니다.
 - **알림은 인앱(벨 아이콘)만 지원** — 카카오 알림톡은 비즈니스 채널과 유료 발신 대행사 계약이 필요해 범위에서 제외했습니다.
 

@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { Sparkles } from 'lucide-react'
 import FormField, { ErrorText } from '@/components/common/FormField'
 import ToggleButtonGroup from '@/components/mypetsy/ToggleButtonGroup'
 import PetAvatarPicker from '@/components/mypetsy/PetAvatarPicker'
 import { getAvatarPresetsForSpecies } from '@/constants/petAvatarPresets'
-import { INPUT_CLASS } from '@/constants/formStyles'
+import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/constants/formStyles'
 import { todayISO } from '@/utils/date'
 import { isValidWeight } from '@/utils/validation'
 import api from '@/api/instance'
@@ -115,15 +116,16 @@ export default function PetForm({ initialValues, submitLabel, onSubmit, petId })
               type="button"
               onClick={handleGenerateBreedGuide}
               disabled={!values.breed.trim() || isGeneratingBreedGuide}
-              className="shrink-0 rounded-xl border border-border px-3 py-2.5 text-xs font-semibold text-ink-secondary transition-colors hover:border-primary-mint-dark hover:text-ink disabled:opacity-50"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-primary-purple/50 bg-primary-purple-soft px-3 py-2.5 text-xs font-semibold text-primary-purple-deep transition-colors hover:border-primary-purple disabled:opacity-50"
             >
+              <Sparkles size={13} className={isGeneratingBreedGuide ? 'animate-pulse' : ''} />
               {isGeneratingBreedGuide ? '생성 중...' : 'AI로 품종 정보 확인'}
             </button>
           )}
         </div>
         {breedGuideError && <ErrorText>{breedGuideError}</ErrorText>}
         {breedGuide && (
-          <div className="mt-2 rounded-xl border border-border bg-bg p-3 text-xs text-ink-secondary">
+          <div className="mt-2 rounded-2xl border border-primary-purple/30 bg-primary-purple-soft/60 p-3.5 text-xs leading-relaxed text-ink-secondary">
             <p><span className="font-semibold text-ink">훈련 팁</span> · {breedGuide.trainingTip}</p>
             <p className="mt-1"><span className="font-semibold text-ink">주의할 만성질환</span> · {breedGuide.chronicDiseases}</p>
             {breedGuide.specialCare && (
@@ -182,7 +184,7 @@ export default function PetForm({ initialValues, submitLabel, onSubmit, petId })
 
       <button
         type="submit"
-        className="w-full rounded-full bg-primary-mint px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-primary-mint-dark hover:text-white"
+        className={`w-full py-3 ${PRIMARY_BUTTON_CLASS}`}
       >
         {submitLabel}
       </button>

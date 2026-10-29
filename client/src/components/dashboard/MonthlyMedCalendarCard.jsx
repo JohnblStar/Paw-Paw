@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { CalendarDays, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import Card from '@/components/common/Card'
 import Modal from '@/components/common/Modal'
 import { buildMonthGrid } from '@/utils/calendarGrid'
@@ -32,32 +33,32 @@ export default function MonthlyMedCalendarCard({ viewMonth, onMonthChange, month
   const selectedSummary = selectedDate ? dataByDate[selectedDate] : null
 
   return (
-    <Card title="월간 복약 캘린더">
-      <div className="mb-3 flex items-center justify-between">
+    <Card title="월간 복약 캘린더" icon={CalendarDays} tone="mint">
+      <div className="mb-4 flex items-center justify-between rounded-full bg-surface-muted/70 p-1">
         <button
           type="button"
           onClick={() => onMonthChange(shiftMonth(viewMonth, -1))}
           aria-label="이전 달"
-          className="rounded-full px-2 py-1 text-2xl font-bold text-ink-secondary transition-colors hover:text-ink"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface hover:text-ink hover:shadow-chip"
         >
-          ‹
+          <ChevronLeft size={17} />
         </button>
-        <span className="text-sm font-semibold text-ink">
+        <span className="text-sm font-bold tabular-nums text-ink">
           {year}년 {month}월
         </span>
         <button
           type="button"
           onClick={() => onMonthChange(shiftMonth(viewMonth, 1))}
           aria-label="다음 달"
-          className="rounded-full px-2 py-1 text-2xl font-bold text-ink-secondary transition-colors hover:text-ink"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface hover:text-ink hover:shadow-chip"
         >
-          ›
+          <ChevronRight size={17} />
         </button>
       </div>
 
       <div className="grid grid-cols-7 gap-1.5 text-center">
         {DAY_LABELS.map((label) => (
-          <span key={label} className="text-xs text-ink-secondary">
+          <span key={label} className="pb-1 text-[11px] font-semibold text-muted">
             {label}
           </span>
         ))}
@@ -75,19 +76,19 @@ export default function MonthlyMedCalendarCard({ viewMonth, onMonthChange, month
               type="button"
               disabled={!clickable}
               onClick={() => openDay(cell)}
-              className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs ${
-                cell.date === todayStr ? 'ring-1 ring-primary-purple' : ''
-              } ${clickable ? 'cursor-pointer hover:bg-bg' : 'cursor-default'}`}
+              className={`flex flex-col items-center gap-1 rounded-xl py-1.5 text-xs transition-colors ${
+                cell.date === todayStr ? 'bg-ink/[0.04] ring-1 ring-ink/70' : ''
+              } ${clickable ? 'cursor-pointer hover:bg-surface-muted' : 'cursor-default'}`}
             >
-              <span className="text-ink-secondary">{cell.day}</span>
+              <span className={`tabular-nums ${cell.date === todayStr ? 'font-bold text-ink' : 'text-ink-secondary'}`}>{cell.day}</span>
               {cell.data && (
                 <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold ${
+                  className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums ${
                     isFuture
-                      ? 'bg-bg text-ink-secondary/70'
+                      ? 'bg-surface-muted text-muted'
                       : complete
                         ? 'bg-primary-mint text-ink'
-                        : 'bg-coral/15 text-coral'
+                        : 'bg-coral-soft text-coral-deep'
                   }`}
                 >
                   {cell.data.taken}/{cell.data.total}
@@ -107,7 +108,7 @@ export default function MonthlyMedCalendarCard({ viewMonth, onMonthChange, month
               todayMedications.map((med) => (
                 <li
                   key={med.id}
-                  className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"
+                  className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm"
                 >
                   <span className="text-ink">{med.name}</span>
                   <span className="flex items-center gap-1.5">
@@ -117,13 +118,13 @@ export default function MonthlyMedCalendarCard({ viewMonth, onMonthChange, month
                         type="button"
                         title={med.alertTimes?.[index] ?? `${index + 1}회`}
                         onClick={() => onToggleToday(med.id, index)}
-                        className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                        className={`flex h-7 w-7 items-center justify-center rounded-full transition-all active:scale-90 ${
                           isTaken
                             ? 'bg-primary-mint text-ink'
-                            : 'bg-bg border border-border text-muted'
+                            : 'border border-dashed border-border-strong bg-surface text-muted hover:border-primary-mint-dark'
                         }`}
                       >
-                        {isTaken ? '✓' : ''}
+                        {isTaken ? <Check size={14} strokeWidth={3} /> : ''}
                       </button>
                     ))}
                   </span>

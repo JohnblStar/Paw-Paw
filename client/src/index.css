@@ -1,24 +1,47 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap");
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
 @import "tailwindcss";
 
+/* Paw:Paw 디자인 토큰 v3 — 브랜드 색(민트/퍼플/코랄/앰버)과 의미 규칙은 그대로 두고,
+   글자용 진한 톤(-deep)과 배경용 옅은 톤(-soft)을 추가했다. 상세는 docs/DESIGN.md 참고. */
 @theme {
   --color-primary-mint: #9edac4;
   --color-primary-mint-dark: #5bb898;
+  --color-primary-mint-deep: #2e8467;
+  --color-primary-mint-soft: #e7f6f0;
   --color-primary-purple: #c1a7e2;
-  --color-ink: #3a342e;
-  --color-ink-secondary: #6b6460;
-  --color-bg: #fdfcf9;
-  --color-border: #ede8e1;
+  --color-primary-purple-deep: #7457a8;
+  --color-primary-purple-soft: #f3edfb;
+  --color-ink: #26211d;
+  --color-ink-secondary: #6b635b;
+  --color-bg: #f7f5f0;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f3f0ea;
+  --color-border: #e9e3da;
+  --color-border-strong: #d9d0c3;
   --color-coral: #e8837a;
+  --color-coral-deep: #c4554b;
+  --color-coral-soft: #fcece9;
   --color-amber: #f5d98b;
   --color-amber-dark: #f9c74f;
-  --color-muted: #b0a8a0;
+  --color-amber-deep: #8f6410;
+  --color-amber-soft: #fdf5df;
+  --color-muted: #a39a90;
   --color-muted-light: #c0bab4;
+  /* 카카오 로그인 버튼 공식 가이드 색상 */
+  --color-kakao: #fee500;
+  --color-kakao-ink: #191919;
 
-  --font-sans: "Noto Sans KR", sans-serif;
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", sans-serif;
+
+  --shadow-card: 0 1px 2px rgb(38 33 29 / 0.04), 0 10px 30px -18px rgb(38 33 29 / 0.18);
+  --shadow-pop: 0 2px 6px rgb(38 33 29 / 0.06), 0 24px 48px -16px rgb(38 33 29 / 0.24);
+  --shadow-chip: 0 1px 2px rgb(38 33 29 / 0.08), 0 2px 8px -2px rgb(38 33 29 / 0.08);
 
   --animate-bell-ring: bell-ring 0.6s ease-in-out;
   --animate-toast-in: toast-in 0.3s ease-out;
+  --animate-modal-in: modal-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-fade-in: fade-in 0.2s ease-out;
 }
 
 @keyframes bell-ring {
@@ -54,8 +77,47 @@
   }
 }
 
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 body {
   background-color: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  /* Pretendard는 공백 글리프가 좁아(0.24em) 한글 사이 띄어쓰기가 붙어 보이므로 단어 간격을 보정한다 */
+  word-spacing: 0.06em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 키보드 사용자를 위한 포커스 표시 (마우스 클릭 시에는 나타나지 않음) */
+:where(button, a, input, textarea, select, [role="button"]):focus-visible {
+  outline: 2px solid var(--color-primary-mint-dark);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

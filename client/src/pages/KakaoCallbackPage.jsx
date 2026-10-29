@@ -36,12 +36,12 @@ function KakaoCallbackPage() {
   if (error) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-bg px-6 text-center">
-        <p className="text-sm font-medium text-coral">로그인에 실패했어요</p>
+        <p className="text-base font-bold text-coral-deep">로그인에 실패했어요</p>
         <p className="max-w-md text-xs text-ink-secondary">{error}</p>
         <button
           type="button"
           onClick={() => navigate('/', { replace: true })}
-          className="mt-2 rounded-full bg-primary-mint px-5 py-2 text-sm font-semibold text-ink hover:bg-primary-mint-dark hover:text-white"
+          className="mt-3 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
         >
           처음으로 돌아가기
         </button>
@@ -51,7 +51,7 @@ function KakaoCallbackPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg">
-      <p className="text-sm text-ink-secondary">로그인 처리 중입니다...</p>
+      <p className="animate-pulse text-sm text-ink-secondary">로그인 처리 중입니다...</p>
     </div>
   )
 }

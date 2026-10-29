@@ -13,7 +13,7 @@
 - DB: MongoDB Atlas (motor 비동기 드라이버)
 - 인증: Kakao 소셜 로그인 → 서버가 JWT 세션 발급
 - AI: 학교 제공 HAI-GPT(ChatGPT 계열 API), 월 토큰 할당량 제한적 (개발기 5,000 / 개강 후 20,000) → 토큰 절약이 설계 원칙
-- 배포: Vercel(Frontend) / Railway(Backend)
+- 배포: Vercel(Frontend) / Render(Backend, Free 인스턴스 — 15분 미사용 시 슬립)
 
 ## 실행 명령어
 ```

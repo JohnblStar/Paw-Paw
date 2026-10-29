@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CalendarPlus } from 'lucide-react'
 import Modal from '@/components/common/Modal'
 import FormField, { ErrorText } from '@/components/common/FormField'
 import EditModalActions from '@/components/common/EditModalActions'
@@ -89,8 +90,9 @@ export default function ScheduleEditModal({ isOpen, onClose, petId, schedule, on
                     type="button"
                     onClick={handleRepeatNextYear}
                     disabled={isSaving}
-                    className="rounded-full border border-border px-4 py-2 text-xs font-semibold text-ink-secondary transition-colors hover:border-primary-mint-dark hover:text-ink disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border-strong bg-surface-muted/60 px-4 py-2.5 text-xs font-semibold text-ink-secondary transition-colors hover:border-amber-dark hover:bg-amber-soft hover:text-amber-deep disabled:opacity-50"
                 >
+                    <CalendarPlus size={14} />
                     1년 뒤 같은 항목 다시 등록 ({addOneYear(schedule.date)})
                 </button>
                 <EditModalActions onDelete={handleDelete} isSaving={isSaving} />

@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { Plus, Scale } from 'lucide-react'
 import Card from '@/components/common/Card'
 import WeightLineChart from '@/components/common/WeightLineChart'
 import WeightLogModal from '@/components/dashboard/WeightLogModal'
+import { CHIP_BUTTON_CLASS } from '@/constants/formStyles'
 
 export default function WeightGraphCard({ petId, data, entries, standardRange, onSaved }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -9,13 +11,15 @@ export default function WeightGraphCard({ petId, data, entries, standardRange, o
   return (
     <Card
       title="체중 변화"
+      icon={Scale}
       action={
         <button
           type="button"
           onClick={() => setIsModalOpen(true)}
-          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink-secondary transition-colors hover:border-primary-mint-dark hover:text-ink"
+          className={CHIP_BUTTON_CLASS}
         >
-          + 체중 기록
+          <Plus size={13} strokeWidth={2.5} />
+          체중 기록
         </button>
       }
     >
