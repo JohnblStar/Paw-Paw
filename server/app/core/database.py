@@ -15,6 +15,7 @@ async def connect_to_mongo() -> None:
     await db.reports.create_index([("petId", 1), ("year", 1), ("month", 1)])
     await db.notificationReads.create_index([("userId", 1), ("notificationId", 1)], unique=True)
     await db.chatCache.create_index("expiresAt", expireAfterSeconds=0)
+    await db.chatDailyUsage.create_index("expiresAt", expireAfterSeconds=0)
 
 async def close_mongo_connection() -> None:
     if client is not None:

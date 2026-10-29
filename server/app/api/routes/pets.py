@@ -14,9 +14,10 @@ from typing import Literal
 from app.models.weight import WeightOut
 from app.models.medication import MedicationOut
 from app.models.schedule import ScheduleOut
-from app.models.breed_guide import BreedGuideOut
+from app.models.breed_guide import BreedGuideOut, WeightRange, parse_weight_range
 from app.services import prompts
-from app.services.hai_gpt import HaiGptError, call_json
+from app.services.hai_gpt import HaiGptError, call_json, is_live_mode
+from app.services.mock_responses import mock_breed_guide
 
 router = APIRouter(prefix="/api/v1/pets", tags=["pets"])
 
@@ -286,6 +287,8 @@ class DashboardOut(BaseModel):
     medicationsToday: list[MedicationToday]
     upcomingSchedule: ScheduleDDay | None
     schedules: list[ScheduleItem]
+    # 체중 그래프의 품종 적정 체중 범위 띠. 캐싱된 품종 가이드에 값이 있을 때만 채워진다 (추가 LLM 호출 없음).
+    standardWeightKg: WeightRange | None = None
 
 @router.get("/{petId}/dashboard", response_model=DashboardOut)
 async def get_dashboard(petId: str, user_id: str = Depends(get_current_user)):
@@ -316,12 +319,18 @@ async def get_dashboard(petId: str, user_id: str = Depends(get_current_user)):
     latest_weight = await db.weights.find_one({"petId": ObjectId(petId)}, sort=[("date", -1)])
     if latest_weight is not None:
         pet_doc["weight"] = latest_weight["value"]
+    breed_guide_doc = (
+        await db.breedGuides.find_one({"breed": pet_doc["breed"]}, {"standardWeightKg": 1})
+        if pet_doc.get("breed")
+        else None
+    )
     return DashboardOut(
         pet=PetOut.from_mongo(pet_doc),
         weights=weights,
         medicationsToday=medications_today,
         upcomingSchedule=upcoming_schedule,
         schedules=schedules,
+        standardWeightKg=breed_guide_doc.get("standardWeightKg") if breed_guide_doc else None,
     )
 
 class PetCreate(BaseModel):
@@ -556,21 +565,34 @@ async def generate_breed_guide(petId: str, body: BreedGuideRequest, user_id: str
         return BreedGuideOut.from_mongo(cached)
 
     try:
-        result = await call_json(prompts.BREED_GUIDE_SYSTEM_PROMPT, raw_input, max_tokens=400)
+        result = await call_json(
+            prompts.BREED_GUIDE_SYSTEM_PROMPT,
+            raw_input,
+            kind="breed",
+            mock=mock_breed_guide(raw_input),
+            max_tokens=400,
+            replay_key=raw_input,
+        )
     except HaiGptError:
         raise HTTPException(
             status_code=503, detail="AI 품종 정보 생성이 일시적으로 제한됩니다. 잠시 후 다시 시도해 주세요."
         )
 
     breed = (result.get("breed") or raw_input).strip()
+    guide_fields = {
+        "trainingTip": result.get("trainingTip", ""),
+        "chronicDiseases": result.get("chronicDiseases", ""),
+        "specialCare": result.get("specialCare"),
+        "standardWeightKg": parse_weight_range(result.get("standardWeightKg")),
+    }
+    # 목업/재생 응답은 실제 품종 정보가 아니므로 영구 캐시(breedGuides)에 남기지 않는다.
+    if not is_live_mode():
+        return BreedGuideOut.from_mongo({"breed": breed, **guide_fields})
+
     doc = await db.breedGuides.find_one_and_update(
         {"breed": breed},
         {
-            "$set": {
-                "trainingTip": result.get("trainingTip", ""),
-                "chronicDiseases": result.get("chronicDiseases", ""),
-                "specialCare": result.get("specialCare"),
-            },
+            "$set": guide_fields,
             "$addToSet": {"rawInputAliases": raw_input},
         },
         upsert=True,

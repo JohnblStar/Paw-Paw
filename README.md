@@ -42,7 +42,8 @@
 
 - **AI 호출 최소화** — 복약/예방접종 등록 트리거 감지, 슬롯필링처럼 결정론적으로 처리 가능한 로직은 키워드·정규식으로 직접 구현하고, LLM은 자유 상담 답변 생성에만 사용합니다. 답변 생성 한 번으로 증상 감지·요약까지 같이 받아 API 호출 자체를 쪼개지 않습니다.
 - **3중 캐싱** — 같은 질문 반복 시 10분 TTL 캐시(MongoDB TTL 인덱스로 자동 만료), 월간 건강 리포트는 입력 컨텍스트 해시가 같으면 재생성하지 않음, 품종 가이드는 품종당 한 번만 생성해 전체 유저가 공유합니다.
-- **병명 확진 방지 이중 장치** — 프롬프트 레벨에서 "사용자 노출용 답변"과 "대시보드 자동 저장용 요약"을 필드로 분리해 후자에는 병명을 금지하고, 서버가 답변의 출처 태그를 정규식으로 재검증해 허용된 라벨 외에는 강제 치환합니다.
+- **병명 확진 방지 이중 장치** — 프롬프트 레벨에서 "사용자 노출용 답변"과 "대시보드 자동 저장용 요약"을 필드로 분리해 후자에는 병명을 금지하고, 서버가 저장 직전에 진단명 사전·접미사 규칙으로 요약을 한 번 더 걸러냅니다. 답변의 출처 태그도 정규식으로 재검증해 허용된 라벨 외에는 강제 치환합니다.
+- **토큰 한도 관리와 시연 대비** — 월별 토큰 사용량을 누적해 한도 근접 시 호출 전에 차단하고, 사용자별 하루 상담 횟수를 제한합니다. `AI_MODE=mock|replay`로 개발기에는 목업, 발표 날에는 기록해둔 실제 응답을 토큰 소모 없이 재생합니다.
 - **체중 그래프 보간** — 특정 날짜에 입력이 없으면 직전 값을 이어서 그래프가 끊기지 않게 처리합니다.
 
 ## 🛠 Tech Stack
@@ -80,6 +81,10 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload
+
+# 테스트 (DB/AI 접속 없이 순수 로직만 검증)
+pip install -r requirements-dev.txt
+python -m pytest
 ```
 
 ### 환경변수
@@ -95,6 +100,9 @@ KAKAO_CLIENT_ID=
 KAKAO_CLIENT_SECRET=
 KAKAO_REDIRECT_URI=http://localhost:5173/login/kakao/callback
 FRONTEND_ORIGIN=  # 배포 시에만: 배포된 프론트엔드 origin (CORS 허용용)
+AI_MODE=live                 # live / mock(개발기) / replay(시연)
+AI_MONTHLY_TOKEN_LIMIT=0     # 월간 토큰 한도, 0이면 기록만
+CHAT_DAILY_LIMIT_PER_USER=20 # 사용자당 하루 AI 상담 횟수, 0이면 무제한
 
 # client/.env
 VITE_API_URL=http://localhost:8000
@@ -106,6 +114,11 @@ VITE_KAKAO_JS_KEY=
 - **Frontend (Vercel)**: Root Directory를 `client`로 설정. `client/vercel.json`이 SPA 라우팅(새로고침 시 404 방지)을 처리한다. 환경변수는 위 client `.env` 항목 그대로 Vercel 프로젝트 설정에 등록.
 - **Backend (Railway)**: Root Directory를 `server`로 설정. `server/Procfile`이 시작 명령(`uvicorn main:app --host 0.0.0.0 --port $PORT`)을 지정한다. 환경변수는 위 server `.env` 항목을 그대로 등록하되, `FRONTEND_ORIGIN`은 배포된 Vercel 도메인으로 채워야 CORS가 통과한다.
 - **Kakao Developers 콘솔**: 배포된 프론트엔드 도메인의 `/login/kakao/callback`을 Redirect URI로 추가 등록해야 카카오 로그인이 동작한다.
+
+## ⚠️ Known Limitations
+
+- **JWT를 `localStorage`에 저장** — 구현이 단순한 대신 XSS에 노출되면 토큰이 탈취될 수 있습니다. 실서비스라면 `HttpOnly` + `Secure` 쿠키와 CSRF 토큰 조합으로 바꿔야 합니다. 이 프로젝트는 포트폴리오/시연용이라 현재 방식을 유지합니다.
+- **알림은 인앱(벨 아이콘)만 지원** — 카카오 알림톡은 비즈니스 채널과 유료 발신 대행사 계약이 필요해 범위에서 제외했습니다.
 
 ## 📁 Project Structure
 
