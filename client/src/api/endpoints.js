@@ -28,6 +28,10 @@ export const ENDPOINTS = {
     NOTIFICATION_READ: (petId, notificationId) =>
       `/api/v1/pets/${petId}/notifications/${encodeURIComponent(notificationId)}/read`,
   },
+  NOTIFICATIONS: {
+    // 모든 반려동물의 복약·예방접종 알림 통합 조회 (각 항목에 petId/petName 포함)
+    ALL: '/api/v1/notifications',
+  },
   CHAT: {
     QUERY: '/api/v1/chat/query',
     SUMMARY: '/api/v1/chat/summary',

@@ -98,7 +98,13 @@ function DashboardContent({ pet }) {
           <VaccinationListCard petId={pet.id} vaccinations={dashboardData.schedules} onSaved={refetch} />
         </div>
 
-        <WeightGraphCard petId={pet.id} data={graphPoints} entries={weightEntries} onSaved={refetch} />
+        <WeightGraphCard
+          petId={pet.id}
+          data={graphPoints}
+          entries={weightEntries}
+          standardRange={dashboardData.standardWeightKg}
+          onSaved={refetch}
+        />
       </div>
 
       <div className="flex flex-col gap-6">

@@ -2,23 +2,27 @@ const VIEW_WIDTH = 560
 const VIEW_HEIGHT = 200
 const PADDING = { top: 24, right: 16, bottom: 45, left: 32 }
 
-export default function WeightLineChart({ points }) {
+// standardRange: 품종 적정 체중 범위 {min, max} — 품종 가이드에 값이 있을 때만 배경 띠로 표시한다.
+export default function WeightLineChart({ points, standardRange = null }) {
   if (!points || points.length === 0) {
     return <p className="text-sm text-ink-secondary">체중 기록이 없어요</p>
   }
 
   const weights = points.map((point) => point.weight)
-  const min = Math.min(...weights)
-  const max = Math.max(...weights)
+  // 적정 범위 띠가 화면 밖으로 잘리지 않도록 축 범위에 함께 포함한다.
+  const domainValues = standardRange ? [...weights, standardRange.min, standardRange.max] : weights
+  const min = Math.min(...domainValues)
+  const max = Math.max(...domainValues)
   const range = max - min || 1
 
   const chartWidth = VIEW_WIDTH - PADDING.left - PADDING.right
   const chartHeight = VIEW_HEIGHT - PADDING.top - PADDING.bottom
 
+  const toY = (value) => PADDING.top + (1 - (value - min) / range) * chartHeight
+
   const coords = points.map((point, index) => {
     const x = PADDING.left + (index / Math.max(points.length - 1, 1)) * chartWidth
-    const y = PADDING.top + (1 - (point.weight - min) / range) * chartHeight
-    return { x, y, point }
+    return { x, y: toY(point.weight), point }
   })
 
   const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ')
@@ -37,6 +41,22 @@ export default function WeightLineChart({ points }) {
           strokeWidth="1"
         />
       ))}
+
+      {standardRange && (
+        <g>
+          <rect
+            x={PADDING.left}
+            width={chartWidth}
+            y={toY(standardRange.max)}
+            height={Math.max(toY(standardRange.min) - toY(standardRange.max), 1)}
+            fill="var(--color-primary-mint)"
+            opacity="0.18"
+          />
+          <text x={PADDING.left + 4} y={toY(standardRange.max) + 11} textAnchor="start" className="fill-primary-mint-dark text-[9px]">
+            품종 적정 {standardRange.min}~{standardRange.max}kg
+          </text>
+        </g>
+      )}
 
       <path d={linePath} fill="none" stroke="var(--color-primary-mint-dark)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
 

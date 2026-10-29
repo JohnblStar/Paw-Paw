@@ -20,9 +20,55 @@ const REGISTRATION_SUGGESTION_LABEL = {
   single_date: '예방접종/검진을 등록해드릴까요?',
 }
 
+// 다른 탭에 다녀와도 대화가 사라지지 않도록 반려동물별로 세션 동안만 보관한다 (브라우저를 닫으면 초기화).
+const STORAGE_KEY_PREFIX = 'pawpaw-chat:'
+const MAX_STORED_MESSAGES = 50
+
+function loadStoredMessages(petId) {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY_PREFIX + petId))
+    return Array.isArray(stored) && stored.length > 0 ? stored : [INTRO_MESSAGE]
+  } catch {
+    return [INTRO_MESSAGE]
+  }
+}
+
+function storeMessages(petId, messages) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY_PREFIX + petId, JSON.stringify(messages.slice(-MAX_STORED_MESSAGES)))
+  } catch {
+    // 저장 공간 부족/차단 시에는 이번 세션 화면에서만 유지된다
+  }
+}
+
+// 후속 질문 문맥용 직전 1턴 (사용자 질문 + 그에 대한 AI 답변). 서버가 길이를 잘라서 쓴다.
+function findPreviousTurn(messages) {
+  for (let i = messages.length - 1; i > 0; i -= 1) {
+    if (messages[i].role === 'assistant' && messages[i - 1].role === 'user') {
+      return { question: messages[i - 1].text, answer: messages[i].text }
+    }
+  }
+  return null
+}
+
 export default function ChatbotPage() {
-  const { activePet, isLoading: isPetLoading, applyPetUpdate } = usePet()
-  const [messages, setMessages] = useState([INTRO_MESSAGE])
+  const { activePet, isLoading: isPetLoading } = usePet()
+
+  if (isPetLoading) {
+    return <LoadingPaws />
+  }
+
+  if (!activePet) {
+    return <EmptyPetState />
+  }
+
+  // pet.id로 키를 주어, 활성 반려동물이 바뀌면 그 아이의 대화로 다시 마운트되도록 한다.
+  return <ChatbotContent key={activePet.id} activePet={activePet} />
+}
+
+function ChatbotContent({ activePet }) {
+  const { applyPetUpdate } = usePet()
+  const [messages, setMessages] = useState(() => loadStoredMessages(activePet.id))
   const [input, setInput] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [wizardType, setWizardType] = useState(null)
@@ -34,13 +80,9 @@ export default function ChatbotPage() {
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, isSending])
 
-  if (isPetLoading) {
-    return <LoadingPaws />
-  }
-
-  if (!activePet) {
-    return <EmptyPetState />
-  }
+  useEffect(() => {
+    storeMessages(activePet.id, messages)
+  }, [activePet.id, messages])
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -52,7 +94,8 @@ export default function ChatbotPage() {
     setIsSending(true)
 
     try {
-      const data = await api.post(ENDPOINTS.CHAT.QUERY, { message })
+      const previousTurn = findPreviousTurn(messages)
+      const data = await api.post(ENDPOINTS.CHAT.QUERY, previousTurn ? { message, previousTurn } : { message })
       // 새 건강 기록이 저장된 응답이면 대시보드/메인페이지가 새로고침 없이도 바로
       // 최신 상태를 보여주도록 PetProvider 캐시를 즉시 동기화한다.
       if (data.pet) applyPetUpdate(data.pet)
