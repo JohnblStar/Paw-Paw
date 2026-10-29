@@ -9,17 +9,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.database import get_database
 from app.core.deps import get_current_user
-from app.core.pet_helpers import age_years, today_kst
+from app.core.pet_helpers import KST, age_years, is_medication_active, today_kst
 from app.models.breed_guide import BreedGuideFeedback
 from app.models.report import (
     DiagnosisOpinion,
     HealthReportOut,
+    MedicationAdherence,
     ReportPetProfile,
     SymptomFrequencyItem,
     WeightChange,
 )
 from app.services import prompts
-from app.services.hai_gpt import HaiGptError, call_text
+from app.services.hai_gpt import HaiGptError, call_text, is_live_mode
+from app.services.mock_responses import MOCK_REPORT_TEXT
 
 router = APIRouter(prefix="/api/v1/pets", tags=["report"])
 
@@ -64,8 +66,13 @@ def _build_analysis_message(
     current: float | None,
     period_before_value: float | None,
     period: Literal["month", "week"],
+    month: int | None = None,
 ) -> str:
-    start_label = "이번 주 시작" if period == "week" else "이번 달 시작"
+    """month가 주어지면(지난달 조회) "N월 초" 기준으로 표기한다."""
+    if period == "week":
+        start_label = "이번 주 시작"
+    else:
+        start_label = f"{month}월 초" if month else "이번 달 시작"
     before_label = "1주 전보다" if period == "week" else "한 달 전보다"
     clauses = []
     if current is not None and period_start_value is not None:
@@ -75,6 +82,19 @@ def _build_analysis_message(
     if not clauses:
         return "체중 기록이 충분하지 않아 변화를 분석할 수 없어요."
     return ", ".join(clauses) + "."
+
+
+def _breed_range_clause(current: float | None, weight_range: dict | None) -> str | None:
+    """품종 가이드에 캐싱된 적정 체중 범위와 현재 체중을 비교한다 (LLM 미호출)."""
+    if current is None or not weight_range:
+        return None
+    low, high = weight_range["min"], weight_range["max"]
+    label = f"품종 적정 체중({low:g}~{high:g}kg)"
+    if current < low:
+        return f"{label}보다 {low - current:.1f}kg 가벼워요."
+    if current > high:
+        return f"{label}보다 {current - high:.1f}kg 무거워요."
+    return f"{label} 범위 안이에요."
 
 
 # REPORT_SYSTEM_PROMPT가 요구하는 고정 헤더(## 종합소견 / ## 앞으로의 케어가이드 / ## 면책 문구)를
@@ -174,13 +194,44 @@ def _extract_diagnosis_opinions(report_text: str) -> list[str]:
     return deduped
 
 
-async def _build_report_context(pet_doc: dict) -> str:
+def _medication_adherence(
+    medications: list[dict], start: date, end: date
+) -> tuple[list[MedicationAdherence], int | None]:
+    """기간 [start, end] 동안 복용 기간에 해당하는 날의 체크 슬롯 수를 집계한다."""
+    items: list[MedicationAdherence] = []
+    for med in medications:
+        freq = med["frequencyPerDay"]
+        logs = {entry["date"].date(): entry.get("slots", []) for entry in med.get("doseLog", [])}
+        taken = expected = 0
+        day = start
+        while day <= end:
+            if is_medication_active(med, day):
+                expected += freq
+                taken += sum(1 for slot in logs.get(day, [])[:freq] if slot)
+            day += timedelta(days=1)
+        if expected:
+            items.append(
+                MedicationAdherence(title=med["title"], taken=taken, expected=expected,
+                                    rate=round(taken * 100 / expected))
+            )
+    total_expected = sum(item.expected for item in items)
+    overall = round(sum(item.taken for item in items) * 100 / total_expected) if total_expected else None
+    return items, overall
+
+
+async def _build_report_context(pet_doc: dict, until: date) -> str:
+    """until(조회 월의 말일)까지의 데이터만 넣는다 — 지난달 레포트가 이후 기록에 영향받지 않게 하기 위함.
+    이번 달은 until이 오늘 이후라 기존과 같은 컨텍스트가 만들어지므로 캐시(contextHash)도 그대로 유지된다."""
     db = get_database()
     pet_id = pet_doc["_id"]
 
-    weights = [doc async for doc in db.weights.find({"petId": pet_id}).sort("date", 1)]
-    medications = [doc async for doc in db.medications.find({"petId": pet_id})]
-    health_notes = pet_doc.get("healthNotes", [])
+    weights = [
+        doc async for doc in db.weights.find({"petId": pet_id}).sort("date", 1) if doc["date"].date() <= until
+    ]
+    medications = [
+        doc async for doc in db.medications.find({"petId": pet_id}) if doc["startDate"].date() <= until
+    ]
+    health_notes = [n for n in pet_doc.get("healthNotes", []) if n["date"].date() <= until]
 
     breed_guide_doc = None
     if pet_doc.get("breed"):
@@ -240,6 +291,12 @@ async def get_monthly_report(
     last_day = monthrange(year, month)[1]
     month_start = date(year, month, 1)
     month_end = date(year, month, last_day)
+    if month_start > today_kst():
+        raise HTTPException(status_code=400, detail="미래 달의 레포트는 조회할 수 없습니다")
+    created_month_start = pet_doc["_id"].generation_time.astimezone(KST).date().replace(day=1)
+    if month_start < created_month_start:
+        # 등록 이전 달은 참고할 데이터가 없어 LLM 호출만 낭비되므로 막는다.
+        raise HTTPException(status_code=400, detail="반려동물 등록 이전 달의 레포트는 조회할 수 없습니다")
     reference_date = min(today_kst(), month_end)
 
     # 주간 옵션은 표시 range(체중 비교 구간/증상 타임라인 필터)에만 영향을 준다.
@@ -265,7 +322,12 @@ async def get_monthly_report(
         SymptomFrequencyItem(date=n["date"].date().isoformat(), issue=n["note"]) for n in period_notes
     ]
 
-    context_block = await _build_report_context(pet_doc)
+    medications = [doc async for doc in db.medications.find({"petId": pet_id})]
+    medication_adherence, overall_adherence_rate = _medication_adherence(
+        medications, period_start, reference_date
+    )
+
+    context_block = await _build_report_context(pet_doc, month_end)
     context_hash = hashlib.sha256(context_block.encode("utf-8")).hexdigest()
 
     cached = await db.reports.find_one({"petId": pet_id, "year": year, "month": month})
@@ -274,13 +336,24 @@ async def get_monthly_report(
         diagnosis_texts = cached["response"]["diagnosisOpinions"]
     else:
         try:
-            report_text = await call_text(prompts.REPORT_SYSTEM_PROMPT, context_block, max_tokens=1800)
+            report_text = await call_text(
+                prompts.REPORT_SYSTEM_PROMPT,
+                context_block,
+                kind="report",
+                mock=MOCK_REPORT_TEXT,
+                max_tokens=1800,
+                replay_key=f"{pet_id}:{year}-{month:02d}",
+            )
         except HaiGptError:
             report_text = FALLBACK_REPORT_TEXT
             diagnosis_texts = []
+            is_generated = False
         else:
             report_text = prompts.sanitize_source_labels(report_text)
             diagnosis_texts = _extract_diagnosis_opinions(report_text)
+            is_generated = True
+        # 목업/재생 응답은 실제 분석 결과가 아니므로 레포트 캐시에 남기지 않는다.
+        if is_generated and is_live_mode():
             await db.reports.update_one(
                 {"petId": pet_id, "year": year, "month": month},
                 {
@@ -296,6 +369,7 @@ async def get_monthly_report(
     diagnosis_opinions = [DiagnosisOpinion(id=i + 1, text=text) for i, text in enumerate(diagnosis_texts)]
 
     breed_guide = None
+    breed_guide_doc = None
     if pet_doc.get("breed"):
         breed_guide_doc = await db.breedGuides.find_one({"breed": pet_doc["breed"]})
         if breed_guide_doc:
@@ -303,6 +377,7 @@ async def get_monthly_report(
                 trainingTip=breed_guide_doc.get("trainingTip", ""),
                 chronicDiseases=breed_guide_doc.get("chronicDiseases", ""),
                 specialCare=breed_guide_doc.get("specialCare"),
+                standardWeightKg=breed_guide_doc.get("standardWeightKg"),
             )
 
     return HealthReportOut(
@@ -315,7 +390,13 @@ async def get_monthly_report(
             thisMonthStart=period_start_value,
             current=current_value,
             oneMonthAgo=period_before_value,
-            analysisMessage=_build_analysis_message(period_start_value, current_value, period_before_value, period),
+            analysisMessage=" ".join(filter(None, [
+                _build_analysis_message(
+                    period_start_value, current_value, period_before_value, period,
+                    None if reference_date == today_kst() else month,
+                ),
+                _breed_range_clause(current_value, breed_guide_doc.get("standardWeightKg") if breed_guide_doc else None),
+            ])),
         ),
         monthlySymptomFrequency=monthly_symptom_frequency,
         diagnosisOpinions=diagnosis_opinions,
@@ -323,4 +404,6 @@ async def get_monthly_report(
         # 백엔드 개발자(김학래) 확인 후 구현. REPORT_SYSTEM_PROMPT는 이 필드를 생성하지 않음.
         hospitalQuestions=[],
         reportText=report_text,
+        medicationAdherence=medication_adherence,
+        overallAdherenceRate=overall_adherence_rate,
     )

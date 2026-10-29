@@ -9,6 +9,9 @@ from app.core.pet_helpers import get_owned_pet, now_kst, today_kst, today_slots
 from app.models.notification import NotificationListOut, NotificationOut
 
 router = APIRouter(prefix="/api/v1/pets", tags=["notifications"])
+# 여러 마리를 키우는 사용자가 활성 펫을 바꾸지 않아도 모든 아이의 복약/접종 알림을 한 번에 보도록 하는 통합 조회.
+# 알림 대상(복약·예방접종)은 그대로이고 조회 범위만 넓힌다 (CLAUDE.md 절대 규칙 3).
+all_router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 
 # 카카오 알림톡은 비즈니스 채널·발신 대행사 계약이 필요해 이 프로젝트 범위 밖이라,
 # 같은 두 카테고리(복약/예방접종)만 대상으로 하는 인앱 알림으로 대체한다.
@@ -62,14 +65,7 @@ async def _build_due_notifications(db, pet_id: ObjectId, today: date) -> list[No
     return notifications
 
 
-@router.get("/{petId}/notifications", response_model=NotificationListOut)
-async def get_notifications(petId: str, user_id: str = Depends(get_current_user)):
-    db = get_database()
-    pet = await get_owned_pet(db, petId, user_id)
-
-    today = today_kst()
-    due = await _build_due_notifications(db, pet["_id"], today)
-
+async def _filter_unread(db, user_id: str, due: list[NotificationOut]) -> NotificationListOut:
     read_ids = {
         doc["notificationId"]
         async for doc in db.notificationReads.find(
@@ -79,6 +75,27 @@ async def get_notifications(petId: str, user_id: str = Depends(get_current_user)
     unread = [n for n in due if n.id not in read_ids]
 
     return NotificationListOut(unreadCount=len(unread), notifications=unread)
+
+
+@router.get("/{petId}/notifications", response_model=NotificationListOut)
+async def get_notifications(petId: str, user_id: str = Depends(get_current_user)):
+    db = get_database()
+    pet = await get_owned_pet(db, petId, user_id)
+    due = await _build_due_notifications(db, pet["_id"], today_kst())
+    return await _filter_unread(db, user_id, due)
+
+
+@all_router.get("", response_model=NotificationListOut)
+async def get_all_pets_notifications(user_id: str = Depends(get_current_user)):
+    db = get_database()
+    today = today_kst()
+    due: list[NotificationOut] = []
+    async for pet in db.pets.find({"ownerId": ObjectId(user_id)}, {"name": 1}):
+        for notification in await _build_due_notifications(db, pet["_id"], today):
+            notification.petId = str(pet["_id"])
+            notification.petName = pet["name"]
+            due.append(notification)
+    return await _filter_unread(db, user_id, due)
 
 
 @router.patch("/{petId}/notifications/{notificationId}/read", status_code=204)

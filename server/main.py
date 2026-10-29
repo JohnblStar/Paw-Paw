@@ -34,6 +34,7 @@ app.include_router(users.router)
 app.include_router(chat.router)
 app.include_router(report.router)
 app.include_router(notification.router)
+app.include_router(notification.all_router)
 
 @app.get("/health")
 async def health_check():
